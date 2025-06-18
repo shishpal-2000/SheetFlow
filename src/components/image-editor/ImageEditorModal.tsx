@@ -126,12 +126,12 @@ export default function ImageEditorModal({
   );
   const [text, setText] = useState("");
   const [showCropConfirm, setShowCropConfirm] = useState(false);
+  const [showCurveConfirm, setShowCurveConfirm] = useState(false);
   // Removed curve-related state
 
   // Crop-related state
   const [cropArea, setCropArea] = useState<CropArea | null>(null);
   const [isCropping, setIsCropping] = useState<boolean>(false);
-  const [isDraggingCrop, setIsDraggingCrop] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<Point | null>(null);
 
   // Text styling state
@@ -1067,7 +1067,32 @@ export default function ImageEditorModal({
                 </Button>
                 <Button
                   variant={activeTool === "curve" ? "secondary" : "ghost"}
-                  onClick={() => setActiveTool("curve")}
+                  onClick={() => {
+                    // Check if there are any changes on the drawing canvas
+                    const drawingCanvas = drawingCanvasRef.current;
+                    const ctx = drawingCanvas?.getContext("2d");
+                    if (!drawingCanvas || !ctx) return;
+
+                    // Get the image data to check if there are any non-transparent pixels
+                    const imageData = ctx.getImageData(
+                      0,
+                      0,
+                      drawingCanvas.width,
+                      drawingCanvas.height
+                    ).data;
+                    const hasChanges = imageData.some((pixel, index) => {
+                      // Check alpha channel (every 4th value)
+                      return index % 4 === 3 && pixel !== 0;
+                    });
+
+                    if (hasChanges) {
+                      // If there are changes, show confirmation dialog
+                      setShowCurveConfirm(true);
+                    } else {
+                      // If no changes, switch to curve tool directly
+                      setActiveTool("curve");
+                    }
+                  }}
                   className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                 >
                   <PenTool className="h-4 w-4" /> Curve
@@ -1075,7 +1100,7 @@ export default function ImageEditorModal({
               </div>
             </div>
 
-            {/* Confiramtion dialog for crop */}
+            {/* Confirmation dialog for crop */}
             {showCropConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-sm text-muted-foreground">
@@ -1100,6 +1125,43 @@ export default function ImageEditorModal({
                     className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Proceed
+                  </Button>
+                </div>
+              </div>
+            )}
+            {/* Confirmation dialog for curve */}
+            {showCurveConfirm && (
+              <div className="space-y-4 mt-2">
+                <p className="text-sm text-muted-foreground">
+                  These changes till now will be saved and they cannot be undone
+                  after drawing a new curve. You can make new changes after drawing
+                  the curve.
+                </p>
+                <div className="flex flex-col gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      flattenLayers();
+                      setActiveTool("curve");
+                      setShowCurveConfirm(false);
+                      toast({
+                        title: "Changes Saved",
+                        description:
+                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
+                        duration: 3000,
+                      });
+                    }}
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
+                  >
+                    Proceed
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setShowCurveConfirm(false)}
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
+                  >
+                    Cancel
                   </Button>
                 </div>
               </div>
