@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
-export interface Point {
+interface Point {
   x: number;
   y: number;
 }
@@ -8,38 +8,29 @@ export interface Point {
 interface CurveToolProps {
   active: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement>;
+  onFinishCurve?: (curve: Point[]) => void;
 }
 
-export const CurveTool = ({ active, canvasRef }: CurveToolProps) => {
+export const CurveTool: React.FC<CurveToolProps> = ({
+  active,
+  canvasRef,
+  onFinishCurve,
+}) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
-  const [selectedCurveIndex, setSelectedCurveIndex] = useState<number | null>(
-    null
-  );
+  const [selectedCurveIndex, setSelectedCurveIndex] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
 
-  const drawing = active && currentCurve.length > 0;
-
-  const getMousePos = (e: MouseEvent): Point => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-  };
-
-  const isNear = (pt1: Point, pt2: Point, dist = 10) =>
-    (pt1.x - pt2.x) ** 2 + (pt1.y - pt2.y) ** 2 <= dist ** 2;
-
-  useEffect(() => {
+  const draw = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!ctx || !canvas) return;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const allCurves = [...curves];
-    if (drawing && currentCurve.length > 1) {
+    if (active && currentCurve.length > 1) {
       allCurves.push(currentCurve);
     }
 
@@ -67,9 +58,8 @@ export const CurveTool = ({ active, canvasRef }: CurveToolProps) => {
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      const showPoints =
-        (drawing && idx === allCurves.length - 1) || idx === selectedCurveIndex;
-      if (showPoints) {
+      const shouldShowPoints = (active && idx === allCurves.length - 1) || idx === selectedCurveIndex;
+      if (shouldShowPoints) {
         curve.forEach((pt) => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
@@ -79,95 +69,110 @@ export const CurveTool = ({ active, canvasRef }: CurveToolProps) => {
       }
     });
 
-    if (drawing && currentCurve.length > 0 && mousePos) {
-      const last = currentCurve[currentCurve.length - 1];
+    if (active && currentCurve.length > 0 && mousePos) {
+      const lastPoint = currentCurve[currentCurve.length - 1];
       ctx.beginPath();
-      ctx.moveTo(last.x, last.y);
+      ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(mousePos.x, mousePos.y);
+      ctx.strokeStyle = "#aaa";
       ctx.setLineDash([5, 5]);
-      ctx.strokeStyle = "#999";
       ctx.stroke();
       ctx.setLineDash([]);
     }
-  }, [curves, currentCurve, selectedCurveIndex, mousePos, drawing]);
+  };
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && currentCurve.length > 1) {
-        setCurves((prev) => [...prev, currentCurve]);
-        setSelectedCurveIndex(curves.length);
-        setCurrentCurve([]);
-        setMousePos(null);
-      }
+  const getMousePos = (e: MouseEvent): Point => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
+  };
 
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [currentCurve, curves.length]);
+  const isNear = (pt1: Point, pt2: Point, distance = 10): boolean => {
+    const dx = pt1.x - pt2.x;
+    const dy = pt1.y - pt2.y;
+    return dx * dx + dy * dy <= distance * distance;
+  };
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !active) return;
+  const handleMouseDown = (e: MouseEvent) => {
+    const pos = getMousePos(e);
+    if (active) {
+      setCurrentCurve((prev) => [...prev, pos]);
+      return;
+    }
 
-    const handleDown = (e: MouseEvent) => {
-      const pos = getMousePos(e);
-
-      if (drawing) {
-        setCurrentCurve((prev) => [...prev, pos]);
-        return;
-      }
-
-      if (selectedCurveIndex !== null) {
-        const curve = curves[selectedCurveIndex];
-        for (let i = 0; i < curve.length; i++) {
-          if (isNear(pos, curve[i])) {
-            setDragging(i);
-            return;
-          }
+    if (selectedCurveIndex !== null) {
+      const curve = curves[selectedCurveIndex];
+      for (let i = 0; i < curve.length; i++) {
+        if (isNear(pos, curve[i])) {
+          setDragging(i);
+          return;
         }
       }
+    }
 
-      const hitIndex = curves.findIndex((curve) =>
-        curve.some((pt) => isNear(pt, pos, 8))
-      );
+    const hitIndex = curves.findIndex((curve) =>
+      curve.some((pt) => isNear(pt, pos, 8))
+    );
+    if (hitIndex !== -1) {
+      setSelectedCurveIndex(hitIndex);
+    } else {
+      setSelectedCurveIndex(null);
+    }
+  };
 
-      if (hitIndex !== -1) {
-        setSelectedCurveIndex(hitIndex);
-      } else {
-        setSelectedCurveIndex(null);
-      }
-    };
+  const handleMouseMove = (e: MouseEvent) => {
+    const pos = getMousePos(e);
+    if (active && currentCurve.length > 0) {
+      setMousePos(pos);
+      return;
+    }
 
-    const handleMove = (e: MouseEvent) => {
-      const pos = getMousePos(e);
-      if (drawing) {
-        setMousePos(pos);
-        return;
-      }
-
-      if (dragging === null || selectedCurveIndex === null) return;
+    if (dragging !== null && selectedCurveIndex !== null) {
       setCurves((prev) => {
         const newCurves = [...prev];
         newCurves[selectedCurveIndex][dragging] = pos;
         return newCurves;
       });
-    };
+    }
+  };
 
-    const handleUp = () => {
-      setDragging(null);
+  const handleMouseUp = () => {
+    setDragging(null);
+    setMousePos(null);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && active && currentCurve.length > 1) {
+      setCurves((prev) => [...prev, currentCurve]);
+      setSelectedCurveIndex(curves.length);
+      setCurrentCurve([]);
       setMousePos(null);
-    };
+      if (onFinishCurve) onFinishCurve(currentCurve);
+    }
+  };
 
-    canvas.addEventListener("mousedown", handleDown);
-    canvas.addEventListener("mousemove", handleMove);
-    canvas.addEventListener("mouseup", handleUp);
+  useEffect(draw, [curves, currentCurve, selectedCurveIndex, dragging, active, mousePos]);
+
+  useEffect(() => {
+    if (!active) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      canvas.removeEventListener("mousedown", handleDown);
-      canvas.removeEventListener("mousemove", handleMove);
-      canvas.removeEventListener("mouseup", handleUp);
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [active, drawing, dragging, selectedCurveIndex, currentCurve]);
+  }, [active, currentCurve, curves, dragging, selectedCurveIndex]);
 
-  return null; // logic only; drawing happens directly on canvas
+  return null; // purely interactive on canvas, no DOM output
 };

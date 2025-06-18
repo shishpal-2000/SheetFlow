@@ -144,6 +144,8 @@ export default function ImageEditorModal({
     backgroundColor: null,
   });
 
+  console.log({activeTool})
+
   const { toast } = useToast();
 
   const drawImageOnCanvas = useCallback(() => {
@@ -1069,7 +1071,7 @@ export default function ImageEditorModal({
                 </Button>
                 <Button
                   variant={activeTool === "curve" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("curve")}
+                  onClick={() => setActiveTool("curve")}
                   className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                 >
                   <PenTool className="h-4 w-4" /> Curve
@@ -1345,8 +1347,9 @@ export default function ImageEditorModal({
                     : "crosshair",
               }}
             />
+
             {activeTool === "curve" && (
-              <CurveTool active={true} canvasRef={drawingCanvasRef} />
+              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} />
             )}
             {textInputPosition && (
               <FloatingTextInput
