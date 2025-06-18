@@ -12,6 +12,7 @@ interface CurveToolProps {
   currentColor: string;
   setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
+  strokeStyle: string;
 }
 
 export const CurveTool: React.FC<CurveToolProps> = ({
@@ -20,6 +21,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   onFinishCurve,
   setActiveTool,
   currentColor,
+  strokeStyle,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -62,7 +64,23 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = 2;
+
+      switch (strokeStyle) {
+        case "dashed":
+          ctx.setLineDash([5, 5]);
+          break;
+        case "dotted":
+          ctx.setLineDash([1, 3]);
+          break;
+        case "double":
+          ctx.setLineDash([10, 5]);
+          break;
+        default:
+          ctx.setLineDash([]);
+      }
+
       ctx.stroke();
+      ctx.setLineDash([]);
 
       const shouldShowPoints = (drawing && idx === allCurves.length - 1) || idx === selectedCurveIndex;
       if (shouldShowPoints) {
@@ -172,10 +190,10 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       setSelectedCurveIndex(null);
 
       // Redraw all curves without showing any points
-      const allCurves = [...curves];
-      if (currentCurve.length > 1) {
-        allCurves.push(currentCurve);
-      }
+      const allCurves = [...curves, currentCurve];
+      // if (currentCurve.length > 1) {
+      //   allCurves.push(currentCurve);
+      // }
 
       allCurves.forEach((curve, idx) => {
         if (curve.length < 2) return;
@@ -202,7 +220,24 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
         ctx.strokeStyle = currentColor;
         ctx.lineWidth = 2;
+        
+        // Apply stroke style
+        switch (strokeStyle) {
+          case "dashed":
+            ctx.setLineDash([5, 5]);
+            break;
+          case "dotted":
+            ctx.setLineDash([1, 3]);
+            break;
+          case "double":
+            ctx.setLineDash([10, 5]);
+            break;
+          default:
+            ctx.setLineDash([]); // solid
+        }
+
         ctx.stroke();
+        ctx.setLineDash([]);
       });
 
       if (onFinishCurve) {

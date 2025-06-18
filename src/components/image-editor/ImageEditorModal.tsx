@@ -1207,7 +1207,7 @@ export default function ImageEditorModal({
             )}
 
             {/* Show stroke style selector for shape tools */}
-            {activeTool && ["line", "rectangle", "circle", "arrow", "double-arrow"].includes(
+            {activeTool && ["line", "rectangle", "circle", "arrow", "double-arrow", "curve"].includes(
               activeTool
             ) && (
               <div className="mt-4">
@@ -1407,7 +1407,7 @@ export default function ImageEditorModal({
             />
 
             {activeTool === "curve" && (
-              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} setActiveTool={setActiveTool} />
+              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} setActiveTool={setActiveTool} strokeStyle={strokeStyle} />
             )}
             {textInputPosition && (
               <FloatingTextInput
