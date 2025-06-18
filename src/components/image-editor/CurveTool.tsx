@@ -8,6 +8,7 @@ interface Point {
 interface CurveToolProps {
   active: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement>;
+  currentColor: string;
   onFinishCurve?: (curve: Point[]) => void;
 }
 
@@ -15,6 +16,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   active,
   canvasRef,
   onFinishCurve,
+  currentColor,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -54,7 +56,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
         ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
       }
 
-      ctx.strokeStyle = "#007acc";
+      ctx.strokeStyle = currentColor;
       ctx.lineWidth = 2;
       ctx.stroke();
 
@@ -63,7 +65,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
         curve.forEach((pt) => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = "#007acc";
+          ctx.fillStyle = currentColor;
           ctx.fill();
         });
       }
@@ -144,7 +146,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape" && active && currentCurve.length > 1) {
+    if (e.key === "Enter" && active && currentCurve.length > 1) {
       setCurves((prev) => [...prev, currentCurve]);
       setSelectedCurveIndex(curves.length);
       setCurrentCurve([]);

@@ -1349,7 +1349,7 @@ export default function ImageEditorModal({
             />
 
             {activeTool === "curve" && (
-              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} />
+              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} />
             )}
             {textInputPosition && (
               <FloatingTextInput
