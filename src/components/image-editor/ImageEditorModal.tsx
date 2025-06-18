@@ -71,7 +71,7 @@ interface Point {
   y: number;
 }
 
-type DrawingTool =
+export type DrawingTool =
   | "pencil"
   | "eraser"
   | "rectangle"
@@ -112,9 +112,7 @@ export default function ImageEditorModal({
 }: ImageEditorModalProps) {
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [activeTool, setActiveTool] = useState<DrawingTool>(
-    "pencil" as DrawingTool
-  );
+  const [activeTool, setActiveTool] = useState<DrawingTool | null>(null);
   const [currentColor, setCurrentColor] = useState<string>("#000000");
   const [brushSize, setBrushSize] = useState<number>(3);
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
@@ -143,8 +141,6 @@ export default function ImageEditorModal({
     color: "#000000",
     backgroundColor: null,
   });
-
-  console.log({activeTool})
 
   const { toast } = useToast();
 
@@ -509,7 +505,7 @@ export default function ImageEditorModal({
     setIsDrawing(true);
     setStartPoint(pos);
 
-    if (["pencil", "eraser"].includes(activeTool)) {
+    if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
       ctx.beginPath();
       ctx.moveTo(pos.x, pos.y);
 
@@ -553,7 +549,7 @@ export default function ImageEditorModal({
     }
 
     // Handle other tools
-    if (["pencil", "eraser"].includes(activeTool)) {
+    if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
       ctx.lineTo(currentPos.x, currentPos.y);
       ctx.lineWidth = brushSize;
       ctx.lineCap = "round";
@@ -616,7 +612,7 @@ export default function ImageEditorModal({
     const ctx = drawingCanvasRef.current?.getContext("2d");
 
     if (ctx) {
-      if (["pencil", "eraser"].includes(activeTool)) {
+      if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
         ctx.closePath();
         ctx.globalCompositeOperation = "source-over";
       }
@@ -1149,7 +1145,7 @@ export default function ImageEditorModal({
             )}
 
             {/* Show stroke style selector for shape tools */}
-            {["line", "rectangle", "circle", "arrow", "double-arrow"].includes(
+            {activeTool && ["line", "rectangle", "circle", "arrow", "double-arrow"].includes(
               activeTool
             ) && (
               <div className="mt-4">
@@ -1344,12 +1340,12 @@ export default function ImageEditorModal({
                     ? "crosshair"
                     : (activeTool as DrawingTool) === "text"
                     ? "text"
-                    : "crosshair",
+                    : (activeTool) === null ? "default" : "crosshair",
               }}
             />
 
             {activeTool === "curve" && (
-              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} />
+              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} setActiveTool={setActiveTool} />
             )}
             {textInputPosition && (
               <FloatingTextInput

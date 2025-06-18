@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { DrawingTool } from "./ImageEditorModal";
 
 interface Point {
   x: number;
@@ -9,6 +10,7 @@ interface CurveToolProps {
   active: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   currentColor: string;
+  setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
 }
 
@@ -16,6 +18,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   active,
   canvasRef,
   onFinishCurve,
+  setActiveTool,
   currentColor,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
@@ -23,6 +26,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   const [selectedCurveIndex, setSelectedCurveIndex] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
+  const [drawing, setDrawing] = useState<boolean>(active);
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -32,7 +36,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const allCurves = [...curves];
-    if (active && currentCurve.length > 1) {
+    if (drawing && currentCurve.length > 1) {
       allCurves.push(currentCurve);
     }
 
@@ -60,7 +64,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      const shouldShowPoints = (active && idx === allCurves.length - 1) || idx === selectedCurveIndex;
+      const shouldShowPoints = (drawing && idx === allCurves.length - 1) || idx === selectedCurveIndex;
       if (shouldShowPoints) {
         curve.forEach((pt) => {
           ctx.beginPath();
@@ -71,7 +75,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       }
     });
 
-    if (active && currentCurve.length > 0 && mousePos) {
+    if (drawing && currentCurve.length > 0 && mousePos) {
       const lastPoint = currentCurve[currentCurve.length - 1];
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
@@ -99,7 +103,8 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
   const handleMouseDown = (e: MouseEvent) => {
     const pos = getMousePos(e);
-    if (active) {
+
+    if (drawing) {
       setCurrentCurve((prev) => [...prev, pos]);
       return;
     }
@@ -126,7 +131,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
   const handleMouseMove = (e: MouseEvent) => {
     const pos = getMousePos(e);
-    if (active && currentCurve.length > 0) {
+    if (drawing && currentCurve.length > 0) {
       setMousePos(pos);
       return;
     }
@@ -134,7 +139,9 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     if (dragging !== null && selectedCurveIndex !== null) {
       setCurves((prev) => {
         const newCurves = [...prev];
-        newCurves[selectedCurveIndex][dragging] = pos;
+        const updatedCurve = [...newCurves[selectedCurveIndex]];
+        updatedCurve[dragging] = pos;
+        newCurves[selectedCurveIndex] = updatedCurve;
         return newCurves;
       });
     }
@@ -146,19 +153,20 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && active && currentCurve.length > 1) {
+    if (e.key === "Enter" && drawing && currentCurve.length > 1) {
       setCurves((prev) => [...prev, currentCurve]);
-      setSelectedCurveIndex(curves.length);
       setCurrentCurve([]);
       setMousePos(null);
-      if (onFinishCurve) onFinishCurve(currentCurve);
+      setDrawing(false);
+      setActiveTool(null);
+      setSelectedCurveIndex(null);
     }
   };
 
-  useEffect(draw, [curves, currentCurve, selectedCurveIndex, dragging, active, mousePos]);
+  useEffect(draw, [curves, currentCurve, selectedCurveIndex, dragging, drawing, mousePos]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!drawing) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -174,7 +182,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       canvas.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [active, currentCurve, curves, dragging, selectedCurveIndex]);
+  }, [drawing, currentCurve, curves, dragging, selectedCurveIndex]);
 
   return null; // purely interactive on canvas, no DOM output
 };
