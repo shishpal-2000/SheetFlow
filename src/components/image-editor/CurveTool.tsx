@@ -154,12 +154,60 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && drawing && currentCurve.length > 1) {
+      // Clear the canvas first to remove everything
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      // Add the curve to the list and reset state
       setCurves((prev) => [...prev, currentCurve]);
       setCurrentCurve([]);
       setMousePos(null);
       setDrawing(false);
       setActiveTool(null);
       setSelectedCurveIndex(null);
+
+      // Redraw all curves without showing any points
+      const allCurves = [...curves];
+      if (currentCurve.length > 1) {
+        allCurves.push(currentCurve);
+      }
+
+      allCurves.forEach((curve, idx) => {
+        if (curve.length < 2) return;
+
+        const ctx = canvas?.getContext("2d");
+        if (!ctx) return;
+
+        ctx.beginPath();
+        ctx.moveTo(curve[0].x, curve[0].y);
+
+        for (let i = 0; i < curve.length - 1; i++) {
+          const p0 = curve[i - 1] || curve[i];
+          const p1 = curve[i];
+          const p2 = curve[i + 1];
+          const p3 = curve[i + 2] || p2;
+
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+
+      if (onFinishCurve) {
+        onFinishCurve(currentCurve);
+      }
     }
   };
 
