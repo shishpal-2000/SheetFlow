@@ -13,6 +13,7 @@ interface CurveToolProps {
   setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
   strokeStyle: string;
+  brushSize: number;
 }
 
 export const CurveTool: React.FC<CurveToolProps> = ({
@@ -22,6 +23,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   setActiveTool,
   currentColor,
   strokeStyle,
+  brushSize,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -63,7 +65,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       }
 
       ctx.strokeStyle = currentColor;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = brushSize;
 
       switch (strokeStyle) {
         case "dashed":
@@ -219,8 +221,8 @@ export const CurveTool: React.FC<CurveToolProps> = ({
         }
 
         ctx.strokeStyle = currentColor;
-        ctx.lineWidth = 2;
-        
+        ctx.lineWidth = brushSize;
+
         // Apply stroke style
         switch (strokeStyle) {
           case "dashed":
