@@ -39,6 +39,8 @@ import {
   DotIcon,
   Crop,
   PenTool,
+  Download,
+  Filter,
 } from "lucide-react";
 import { CurveTool } from "./CurveTool";
 
@@ -120,7 +122,7 @@ export default function ImageEditorModal({
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyStep, setHistoryStep] = useState<number>(-1);
-  const [fontSize, setFontSize] = useState<number>(16);
+  const [fontSize, setFontSize] = useState<number>(22);
   const [textInputPosition, setTextInputPosition] = useState<Point | null>(
     null
   );
@@ -136,9 +138,9 @@ export default function ImageEditorModal({
 
   // Text styling state
   const [textStyle, setTextStyle] = useState<TextStyle>({
-    fontSize: 16,
+    fontSize: fontSize,
     fontFamily: "sans-serif",
-    color: "#000000",
+    color: currentColor,
     backgroundColor: null,
   });
 
@@ -156,14 +158,43 @@ export default function ImageEditorModal({
     img.crossOrigin = "anonymous";
     img.src = image.url;
     img.onload = () => {
-      // Set both canvases to the same dimensions
-      baseCanvas.width = img.naturalWidth;
-      baseCanvas.height = img.naturalHeight;
-      drawingCanvas.width = img.naturalWidth;
-      drawingCanvas.height = img.naturalHeight;
+      const container = baseCanvas.parentElement;
+      if (!container) return;
 
-      // Draw the image on the base canvas
-      baseCtx.drawImage(img, 0, 0);
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+
+      const aspectRatio = img.naturalWidth / img.naturalHeight;
+      let newWidth = containerWidth;
+      let newHeight = newWidth / aspectRatio;
+
+      // If the new height is greater than the container height, scale down
+      if (newHeight > containerHeight) {
+        newHeight = containerHeight;
+        newWidth = newHeight * aspectRatio;
+      }
+
+      baseCanvas.width = newWidth;
+      baseCanvas.height = newHeight;
+      drawingCanvas.width = newWidth;
+      drawingCanvas.height = newHeight;
+
+      // Draw the image centered on the base canvas
+      const x = (newWidth - img.naturalWidth) / 2;
+      const y = (newHeight - img.naturalHeight) / 2;
+      const scale = Math.min(
+        newWidth / img.naturalWidth,
+        newHeight / img.naturalHeight
+      );
+
+      const scaleWidth = img.naturalWidth * scale;
+      const scaleHeight = img.naturalHeight * scale;
+
+      const centerX = (newWidth - scaleWidth) / 2;
+      const centerY = (newHeight - scaleHeight) / 2;
+
+      baseCtx.drawImage(img, centerX, centerY, scaleWidth, scaleHeight);
       saveHistory();
     };
     img.onerror = () => {
@@ -223,6 +254,67 @@ export default function ImageEditorModal({
       }
     }
   }, [historyStep, history]);
+
+  // Add download function
+  const downloadImage = () => {
+    const baseCanvas = baseCanvasRef.current;
+    const drawingCanvas = drawingCanvasRef.current;
+    if (!baseCanvas || !drawingCanvas) return;
+
+    // Create a new canvas to combine both layers
+    const combinedCanvas = document.createElement("canvas");
+    combinedCanvas.width = baseCanvas.width;
+    combinedCanvas.height = baseCanvas.height;
+    const combinedCtx = combinedCanvas.getContext("2d");
+    if (!combinedCtx) return;
+
+    // Draw both layers
+    combinedCtx.drawImage(baseCanvas, 0, 0);
+    combinedCtx.drawImage(drawingCanvas, 0, 0);
+
+    // Create download link
+    const link = document.createElement("a");
+    link.download = `edited-${image.name || "image"}.png`;
+    link.href = combinedCanvas.toDataURL("image/png");
+    link.click();
+  };
+
+  // Add black & white filter function
+  const applyBlackAndWhite = () => {
+    const baseCanvas = baseCanvasRef.current;
+    const ctx = baseCanvas?.getContext("2d");
+    if (!baseCanvas || !ctx) return;
+
+    // save current state before applying filter
+    saveHistory();
+
+    // Get image data
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      baseCanvas.width,
+      baseCanvas.height
+    );
+    const data = imageData.data;
+
+    // Convert to grayscale
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const gray = (r + g + b) / 3;
+
+      // Set all color channels to the gray value
+      data[i] = gray; // Red
+      data[i + 1] = gray; // Green
+      data[i + 2] = gray; // Blue
+      // data[i + 3] is alpha, leave it unchanged
+    }
+
+    // Put the modified image data back
+    ctx.putImageData(imageData, 0, 0);
+    saveHistory();
+  };
 
   const handleToolChange = (tool: DrawingTool) => {
     // Clean up crop tool state
@@ -1134,8 +1226,8 @@ export default function ImageEditorModal({
               <div className="space-y-4 mt-2">
                 <p className="text-sm text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
-                  after drawing a new curve. You can make new changes after drawing
-                  the curve.
+                  after drawing a new curve. You can make new changes after
+                  drawing the curve.
                 </p>
                 <div className="flex flex-col gap-2 flex-wrap">
                   <Button
@@ -1207,55 +1299,63 @@ export default function ImageEditorModal({
             )}
 
             {/* Show stroke style selector for shape tools */}
-            {activeTool && ["line", "rectangle", "circle", "arrow", "double-arrow", "curve"].includes(
-              activeTool
-            ) && (
-              <div className="mt-4">
-                <Label
-                  htmlFor="stroke-style"
-                  className="flex items-center gap-2 mb-1"
-                >
-                  <Grip className="h-4 w-4" /> Stroke Style
-                </Label>
-                <Select
-                  value={strokeStyle}
-                  onValueChange={(value: StrokeStyle) => setStrokeStyle(value)}
-                >
-                  <SelectTrigger id="stroke-style">
-                    <SelectValue placeholder="Select style" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="solid">
-                      <div className="flex items-center">
-                        <MinusIcon className="w-4 h-4 mr-2" /> Solid
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="dashed">
-                      <div className="flex items-center">
-                        <div className="w-4 h-4 mr-2 flex items-center">
-                          <div className="w-full border-t-2 border-dashed" />
+            {activeTool &&
+              [
+                "line",
+                "rectangle",
+                "circle",
+                "arrow",
+                "double-arrow",
+                "curve",
+              ].includes(activeTool) && (
+                <div className="mt-4">
+                  <Label
+                    htmlFor="stroke-style"
+                    className="flex items-center gap-2 mb-1"
+                  >
+                    <Grip className="h-4 w-4" /> Stroke Style
+                  </Label>
+                  <Select
+                    value={strokeStyle}
+                    onValueChange={(value: StrokeStyle) =>
+                      setStrokeStyle(value)
+                    }
+                  >
+                    <SelectTrigger id="stroke-style">
+                      <SelectValue placeholder="Select style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">
+                        <div className="flex items-center">
+                          <MinusIcon className="w-4 h-4 mr-2" /> Solid
                         </div>
-                        Dashed
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="dotted">
-                      <div className="flex items-center">
-                        <DotIcon className="w-4 h-4 mr-2" /> Dotted
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="double">
-                      <div className="flex items-center">
-                        <div className="w-4 h-4 mr-2 flex flex-col justify-center gap-0.5">
-                          <div className="w-full border-t" />
-                          <div className="w-full border-t" />
+                      </SelectItem>
+                      <SelectItem value="dashed">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 mr-2 flex items-center">
+                            <div className="w-full border-t-2 border-dashed" />
+                          </div>
+                          Dashed
                         </div>
-                        Double
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                      </SelectItem>
+                      <SelectItem value="dotted">
+                        <div className="flex items-center">
+                          <DotIcon className="w-4 h-4 mr-2" /> Dotted
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="double">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 mr-2 flex flex-col justify-center gap-0.5">
+                            <div className="w-full border-t" />
+                            <div className="w-full border-t" />
+                          </div>
+                          Double
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
             {(activeTool as DrawingTool) === "text" && (
               <div className="space-y-4 mt-2">
@@ -1402,12 +1502,21 @@ export default function ImageEditorModal({
                     ? "crosshair"
                     : (activeTool as DrawingTool) === "text"
                     ? "text"
-                    : (activeTool) === null ? "default" : "crosshair",
+                    : activeTool === null
+                    ? "default"
+                    : "crosshair",
               }}
             />
 
             {activeTool === "curve" && (
-              <CurveTool active={activeTool === "curve"} canvasRef={drawingCanvasRef} currentColor={currentColor} setActiveTool={setActiveTool} strokeStyle={strokeStyle} brushSize={brushSize} />
+              <CurveTool
+                active={activeTool === "curve"}
+                canvasRef={drawingCanvasRef}
+                currentColor={currentColor}
+                setActiveTool={setActiveTool}
+                strokeStyle={strokeStyle}
+                brushSize={brushSize}
+              />
             )}
             {textInputPosition && (
               <FloatingTextInput
@@ -1436,6 +1545,13 @@ export default function ImageEditorModal({
         </div>
 
         <DialogFooter className="p-4 border-t">
+          <Button variant={"outline"} onClick={applyBlackAndWhite}>
+            <Filter className="h-4 w-4" />
+            Apply Filter
+          </Button>
+          <Button variant={"secondary"} onClick={downloadImage} type="button">
+            <Download className="h-4 w-4" /> Download
+          </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel

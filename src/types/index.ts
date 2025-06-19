@@ -9,4 +9,7 @@ export interface Issue {
   id: string;
   description: string;
   images: IssueImage[];
+  status?: string;
+  priority?: string;
+  createdDate?: string;
 }

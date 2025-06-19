@@ -67,15 +67,17 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = brushSize;
 
+      // Apply stroke style
       switch (strokeStyle) {
         case "dashed":
-          ctx.setLineDash([5, 5]);
+          ctx.setLineDash([brushSize * 3, brushSize * 2]);
           break;
         case "dotted":
-          ctx.setLineDash([1, 3]);
+          ctx.setLineDash([brushSize, brushSize]);
           break;
         case "double":
-          ctx.setLineDash([10, 5]);
+          ctx.setLineDash([]);
+          ctx.lineWidth = brushSize / 2;
           break;
         default:
           ctx.setLineDash([]);
@@ -84,8 +86,8 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       ctx.stroke();
       ctx.setLineDash([]);
 
-      const shouldShowPoints = (drawing && idx === allCurves.length - 1) || idx === selectedCurveIndex;
-      if (shouldShowPoints) {
+      // Only show points for selected curves
+      if (selectedCurveIndex === idx) {
         curve.forEach((pt) => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
@@ -101,14 +103,20 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(mousePos.x, mousePos.y);
       ctx.strokeStyle = "#aaa";
-      ctx.setLineDash([5, 5]);
+      ctx.setLineDash([brushSize, brushSize]);
+      ctx.lineWidth = brushSize;
       ctx.stroke();
       ctx.setLineDash([]);
     }
   };
 
   const getMousePos = (e: MouseEvent): Point => {
-    const rect = canvasRef.current!.getBoundingClientRect();
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate position relative to the canvas
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
@@ -142,19 +150,20 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     const hitIndex = curves.findIndex((curve) =>
       curve.some((pt) => isNear(pt, pos, 8))
     );
+    
     if (hitIndex !== -1) {
       setSelectedCurveIndex(hitIndex);
-    } else {
-      setSelectedCurveIndex(null);
+      return;
     }
+
+    // Start new curve if not hitting any existing curve
+    setCurrentCurve([pos]);
+    setDrawing(true);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     const pos = getMousePos(e);
-    if (drawing && currentCurve.length > 0) {
-      setMousePos(pos);
-      return;
-    }
+    setMousePos(pos);
 
     if (dragging !== null && selectedCurveIndex !== null) {
       setCurves((prev) => {
@@ -193,9 +202,9 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
       // Redraw all curves without showing any points
       const allCurves = [...curves, currentCurve];
-      // if (currentCurve.length > 1) {
-      //   allCurves.push(currentCurve);
-      // }
+      if (currentCurve.length > 1) {
+        allCurves.push(currentCurve);
+      }
 
       allCurves.forEach((curve, idx) => {
         if (curve.length < 2) return;
@@ -226,16 +235,20 @@ export const CurveTool: React.FC<CurveToolProps> = ({
         // Apply stroke style
         switch (strokeStyle) {
           case "dashed":
-            ctx.setLineDash([5, 5]);
+            ctx.setLineDash([brushSize * 3, brushSize * 2]);
+            ctx.lineWidth = brushSize;
             break;
           case "dotted":
-            ctx.setLineDash([1, 3]);
+            ctx.setLineDash([brushSize, brushSize]);
+            ctx.lineWidth = brushSize;
             break;
           case "double":
-            ctx.setLineDash([10, 5]);
+            ctx.setLineDash([]);
+            ctx.lineWidth = brushSize / 2;
             break;
           default:
             ctx.setLineDash([]); // solid
+            ctx.lineWidth = brushSize;
         }
 
         ctx.stroke();
