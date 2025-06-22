@@ -139,8 +139,8 @@ export default function ImageEditorModal({
   const [textInputPosition, setTextInputPosition] = useState<Point | null>(
     null
   );
-  const [isTextToolActive, setIsTextToolActive] = useState(false);
   const [text, setText] = useState("");
+  const [isTextToolActive, setIsTextToolActive] = useState(false);
   const [showCropConfirm, setShowCropConfirm] = useState(false);
   const [showCurveConfirm, setShowCurveConfirm] = useState(false);
   const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
@@ -397,32 +397,60 @@ export default function ImageEditorModal({
     };
   };
 
-  // const drawText = (
-  //   ctx: CanvasRenderingContext2D,
-  //   x: number,
-  //   y: number,
-  //   text: string,
-  //   style: TextStyle
-  // ) => {
-  //   ctx.font = `${style.fontSize}px ${style.fontFamily}`;
+  function drawRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-  //   // If background color is set and not transparent, draw it first
-  //   if (style.backgroundColor && style.backgroundColor !== "transparent") {
-  //     const metrics = ctx.measureText(text);
-  //     const textHeight = style.fontSize;
-  //     ctx.fillStyle = style.backgroundColor;
-  //     ctx.fillRect(
-  //       x,
-  //       y - textHeight + 4, // Adjust for baseline
-  //       metrics.width,
-  //       textHeight
-  //     );
-  //   }
+  const drawText = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    text: string,
+    style: TextStyle
+  ) => {
+    ctx.font = `${style.fontSize}px ${style.fontFamily}`;
 
-  //   // Draw the text
-  //   ctx.fillStyle = style.color;
-  //   ctx.fillText(text, x, y);
-  // };
+    // If background color is set and not transparent, draw it first
+    if (style.backgroundColor && style.backgroundColor !== "transparent") {
+      const paddingX = 10;
+      const paddingY = 10;
+      const borderRadius = 8;
+
+      const metrics = ctx.measureText(text);
+      const textHeight =
+        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+
+      const rectX = x - paddingX;
+      const rectY = y - metrics.actualBoundingBoxAscent - paddingY;
+      const rectWidth = metrics.width + 2 * paddingX;
+      const rectHeight = textHeight + 2 * paddingY;
+
+      ctx.fillStyle = style.backgroundColor;
+      drawRoundedRect(ctx, rectX, rectY, rectWidth, rectHeight, borderRadius);
+    }
+
+    // Draw the text
+    ctx.fillStyle = style.color;
+    ctx.fillText(text, x, y);
+  };
 
   const drawArrow = (
     ctx: CanvasRenderingContext2D,
@@ -756,6 +784,8 @@ export default function ImageEditorModal({
     const dataUrl = tempCanvas.toDataURL("image/png");
     onSave(dataUrl);
   };
+
+  console.log(isTextToolActive);
 
   const FloatingTextInput = ({
     position,
@@ -1307,7 +1337,6 @@ export default function ImageEditorModal({
                 </div>
               </div>
             )}
-
             {showCurveArrowConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-sm text-muted-foreground">
@@ -1625,30 +1654,30 @@ export default function ImageEditorModal({
               />
             )}
 
-            {textInputPosition && (
-              // <FloatingTextInput
-              //   position={textInputPosition}
-              //   onSubmit={(submittedText) => {
-              //     const drawingCanvas = drawingCanvasRef.current;
-              //     const ctx = drawingCanvas?.getContext("2d");
-              //     if (!drawingCanvas || !ctx) return;
+            {textInputPosition && isTextToolActive && (
+              <FloatingTextInput
+                position={textInputPosition}
+                onSubmit={(submittedText) => {
+                  const drawingCanvas = drawingCanvasRef.current;
+                  const ctx = drawingCanvas?.getContext("2d");
+                  if (!drawingCanvas || !ctx) return;
 
-              //     drawText(
-              //       ctx,
-              //       textInputPosition.x,
-              //       textInputPosition.y,
-              //       submittedText,
-              //       textStyle
-              //     );
-              //     setTextInputPosition(null); // Clear text input position after submission
-              //     setText("");
-              //     saveHistory();
-              //   }}
-              // />
-              <TextTool
-                drawingCanvasRef={drawingCanvasRef}
-                saveHistory={saveHistory}
+                  drawText(
+                    ctx,
+                    textInputPosition.x,
+                    textInputPosition.y,
+                    submittedText,
+                    textStyle
+                  );
+                  setTextInputPosition(null); // Clear text input position after submission
+                  setText("");
+                  saveHistory();
+                }}
               />
+              // <TextTool
+              //   drawingCanvasRef={drawingCanvasRef}
+              //   saveHistory={saveHistory}
+              // />
             )}
 
             {/* Crop area is handled by drawCropOverlay */}
