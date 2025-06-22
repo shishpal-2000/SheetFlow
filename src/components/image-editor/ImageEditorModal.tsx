@@ -396,6 +396,28 @@ export default function ImageEditorModal({
     };
   };
 
+  function drawRoundedRect(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   const drawText = (
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -407,15 +429,21 @@ export default function ImageEditorModal({
 
     // If background color is set and not transparent, draw it first
     if (style.backgroundColor && style.backgroundColor !== "transparent") {
+      const paddingX = 10;
+      const paddingY = 10;
+      const borderRadius = 8;
+
       const metrics = ctx.measureText(text);
-      const textHeight = style.fontSize;
+      const textHeight =
+        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+
+      const rectX = x - paddingX;
+      const rectY = y - metrics.actualBoundingBoxAscent - paddingY;
+      const rectWidth = metrics.width + 2 * paddingX;
+      const rectHeight = textHeight + 2 * paddingY;
+
       ctx.fillStyle = style.backgroundColor;
-      ctx.fillRect(
-        x,
-        y - textHeight + 4, // Adjust for baseline
-        metrics.width,
-        textHeight
-      );
+      drawRoundedRect(ctx, rectX, rectY, rectWidth, rectHeight, borderRadius);
     }
 
     // Draw the text
