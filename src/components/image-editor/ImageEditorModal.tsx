@@ -43,6 +43,8 @@ import {
   Filter,
 } from "lucide-react";
 import { CurveTool } from "./CurveTool";
+import TextTool from "./TextTool";
+import CurveArrowTool from "./CurveArrowTool";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -58,7 +60,7 @@ interface CropArea {
   height: number;
 }
 
-type StrokeStyle = "solid" | "dashed" | "dotted" | "double";
+export type StrokeStyle = "solid" | "dashed" | "dotted" | "double";
 type FontFamily = "sans-serif" | "serif" | "monospace" | "cursive" | "fantasy";
 
 interface TextStyle {
@@ -68,7 +70,7 @@ interface TextStyle {
   backgroundColor: string | null;
 }
 
-interface Point {
+export interface Point {
   x: number;
   y: number;
 }
@@ -83,7 +85,8 @@ export type DrawingTool =
   | "double-arrow"
   | "crop"
   | "text"
-  | "curve";
+  | "curve"
+  | "curve-arrow";
 
 const availableColors = [
   { name: "Black", value: "#000000" },
@@ -91,6 +94,16 @@ const availableColors = [
   { name: "Blue", value: "#0000FF" },
   { name: "Green", value: "#008000" },
   { name: "Yellow", value: "#FFFF00" },
+  { name: "White", value: "#FFFFFF" },
+  { name: "Transparent", value: "transparent" },
+];
+
+const availableBackgroundColors = [
+  { name: "Light Gray", value: "#F5F5F5" },
+  { name: "Mint Cream", value: "#F5FFFA" },
+  { name: "Lavender", value: "#E6E6FA" },
+  { name: "Alice Blue", value: "#F0F8FF" },
+  { name: "Seashell", value: "#FFF5EE" },
   { name: "White", value: "#FFFFFF" },
   { name: "Transparent", value: "transparent" },
 ];
@@ -126,9 +139,11 @@ export default function ImageEditorModal({
   const [textInputPosition, setTextInputPosition] = useState<Point | null>(
     null
   );
+  const [isTextToolActive, setIsTextToolActive] = useState(false);
   const [text, setText] = useState("");
   const [showCropConfirm, setShowCropConfirm] = useState(false);
   const [showCurveConfirm, setShowCurveConfirm] = useState(false);
+  const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
   // Removed curve-related state
 
   // Crop-related state
@@ -318,7 +333,7 @@ export default function ImageEditorModal({
 
   const handleToolChange = (tool: DrawingTool) => {
     // Clean up crop tool state
-    if (activeTool === "crop") {
+    if (tool === "crop") {
       setCropArea(null);
       setIsCropping(false);
       setDragStart(null);
@@ -330,11 +345,12 @@ export default function ImageEditorModal({
     }
 
     // Clear text input position when switching tools
-    if (activeTool === "text") {
+    if (tool === "text") {
       setTextInputPosition(null);
       setText("");
     }
 
+    setIsTextToolActive(tool === "text");
     setActiveTool(tool);
   };
 
@@ -381,32 +397,32 @@ export default function ImageEditorModal({
     };
   };
 
-  const drawText = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    text: string,
-    style: TextStyle
-  ) => {
-    ctx.font = `${style.fontSize}px ${style.fontFamily}`;
+  // const drawText = (
+  //   ctx: CanvasRenderingContext2D,
+  //   x: number,
+  //   y: number,
+  //   text: string,
+  //   style: TextStyle
+  // ) => {
+  //   ctx.font = `${style.fontSize}px ${style.fontFamily}`;
 
-    // If background color is set and not transparent, draw it first
-    if (style.backgroundColor && style.backgroundColor !== "transparent") {
-      const metrics = ctx.measureText(text);
-      const textHeight = style.fontSize;
-      ctx.fillStyle = style.backgroundColor;
-      ctx.fillRect(
-        x,
-        y - textHeight + 4, // Adjust for baseline
-        metrics.width,
-        textHeight
-      );
-    }
+  //   // If background color is set and not transparent, draw it first
+  //   if (style.backgroundColor && style.backgroundColor !== "transparent") {
+  //     const metrics = ctx.measureText(text);
+  //     const textHeight = style.fontSize;
+  //     ctx.fillStyle = style.backgroundColor;
+  //     ctx.fillRect(
+  //       x,
+  //       y - textHeight + 4, // Adjust for baseline
+  //       metrics.width,
+  //       textHeight
+  //     );
+  //   }
 
-    // Draw the text
-    ctx.fillStyle = style.color;
-    ctx.fillText(text, x, y);
-  };
+  //   // Draw the text
+  //   ctx.fillStyle = style.color;
+  //   ctx.fillText(text, x, y);
+  // };
 
   const drawArrow = (
     ctx: CanvasRenderingContext2D,
@@ -823,6 +839,7 @@ export default function ImageEditorModal({
               setTextStyle((prev) => ({
                 ...prev,
                 backgroundColor: value === "transparent" ? null : value,
+                // color: value === "transparent" ? "black" : value,
               }))
             }
           >
@@ -830,7 +847,7 @@ export default function ImageEditorModal({
               <SelectValue placeholder="Background" />
             </SelectTrigger>
             <SelectContent>
-              {availableColors.map((color) => (
+              {availableBackgroundColors.map((color) => (
                 <SelectItem key={color.value} value={color.value}>
                   <div className="flex items-center">
                     <div
@@ -1189,6 +1206,38 @@ export default function ImageEditorModal({
                 >
                   <PenTool className="h-4 w-4" /> Curve
                 </Button>
+                <Button
+                  variant={activeTool === "curve-arrow" ? "secondary" : "ghost"}
+                  onClick={() => {
+                    // Check if there are any changes on the drawing canvas
+                    const drawingCanvas = drawingCanvasRef.current;
+                    const ctx = drawingCanvas?.getContext("2d");
+                    if (!drawingCanvas || !ctx) return;
+
+                    // Get the image data to check if there are any non-transparent pixels
+                    const imageData = ctx.getImageData(
+                      0,
+                      0,
+                      drawingCanvas.width,
+                      drawingCanvas.height
+                    ).data;
+                    const hasChanges = imageData.some((pixel, index) => {
+                      // Check alpha channel (every 4th value)
+                      return index % 4 === 3 && pixel !== 0;
+                    });
+
+                    if (hasChanges) {
+                      // If there are changes, show confirmation dialog
+                      setShowCurveArrowConfirm(true);
+                    } else {
+                      // If no changes, switch to curve tool directly
+                      setActiveTool("curve-arrow");
+                    }
+                  }}
+                  className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
+                >
+                  <PenTool className="h-4 w-4" /> Curve <br></br> Arrow
+                </Button>
               </div>
             </div>
 
@@ -1251,6 +1300,43 @@ export default function ImageEditorModal({
                     variant="outline"
                     type="button"
                     onClick={() => setShowCurveConfirm(false)}
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {showCurveArrowConfirm && (
+              <div className="space-y-4 mt-2">
+                <p className="text-sm text-muted-foreground">
+                  These changes till now will be saved and they cannot be undone
+                  after drawing a new curve. You can make new changes after
+                  drawing the curve.
+                </p>
+                <div className="flex flex-col gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      flattenLayers();
+                      setActiveTool("curve-arrow");
+                      setShowCurveArrowConfirm(false);
+                      toast({
+                        title: "Changes Saved",
+                        description:
+                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
+                        duration: 3000,
+                      });
+                    }}
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
+                  >
+                    Proceed
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setShowCurveArrowConfirm(false)}
                     className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
@@ -1393,7 +1479,7 @@ export default function ImageEditorModal({
                       <SelectValue placeholder="Select background" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableColors.map((color) => (
+                      {availableBackgroundColors.map((color) => (
                         <SelectItem key={color.value} value={color.value}>
                           <div className="flex items-center">
                             <div
@@ -1421,7 +1507,16 @@ export default function ImageEditorModal({
               >
                 <Palette className="h-4 w-4" /> Color
               </Label>
-              <Select value={currentColor} onValueChange={setCurrentColor}>
+              <Select
+                value={currentColor || textStyle.color}
+                onValueChange={(value) => {
+                  setCurrentColor(value);
+                  setTextStyle((prev) => ({
+                    ...prev,
+                    color: value === "transparent" ? "black" : value,
+                  }));
+                }}
+              >
                 <SelectTrigger id="color-picker">
                   <SelectValue placeholder="Select color" />
                 </SelectTrigger>
@@ -1500,7 +1595,7 @@ export default function ImageEditorModal({
                 cursor:
                   activeTool === "crop"
                     ? "crosshair"
-                    : (activeTool as DrawingTool) === "text"
+                    : activeTool === "text"
                     ? "text"
                     : activeTool === null
                     ? "default"
@@ -1518,25 +1613,41 @@ export default function ImageEditorModal({
                 brushSize={brushSize}
               />
             )}
-            {textInputPosition && (
-              <FloatingTextInput
-                position={textInputPosition}
-                onSubmit={(submittedText) => {
-                  const drawingCanvas = drawingCanvasRef.current;
-                  const ctx = drawingCanvas?.getContext("2d");
-                  if (!drawingCanvas || !ctx) return;
 
-                  drawText(
-                    ctx,
-                    textInputPosition.x,
-                    textInputPosition.y,
-                    submittedText,
-                    textStyle
-                  );
-                  setTextInputPosition(null); // Clear text input position after submission
-                  setText("");
-                  saveHistory();
-                }}
+            {activeTool === "curve-arrow" && (
+              <CurveArrowTool
+                active={activeTool === "curve-arrow"}
+                canvasRef={drawingCanvasRef}
+                currentColor={currentColor}
+                setActiveTool={setActiveTool}
+                strokeStyle={strokeStyle}
+                brushSize={brushSize}
+              />
+            )}
+
+            {textInputPosition && (
+              // <FloatingTextInput
+              //   position={textInputPosition}
+              //   onSubmit={(submittedText) => {
+              //     const drawingCanvas = drawingCanvasRef.current;
+              //     const ctx = drawingCanvas?.getContext("2d");
+              //     if (!drawingCanvas || !ctx) return;
+
+              //     drawText(
+              //       ctx,
+              //       textInputPosition.x,
+              //       textInputPosition.y,
+              //       submittedText,
+              //       textStyle
+              //     );
+              //     setTextInputPosition(null); // Clear text input position after submission
+              //     setText("");
+              //     saveHistory();
+              //   }}
+              // />
+              <TextTool
+                drawingCanvasRef={drawingCanvasRef}
+                saveHistory={saveHistory}
               />
             )}
 
