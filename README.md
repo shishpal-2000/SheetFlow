@@ -10,8 +10,11 @@ To get started, take a look at src/app/page.tsx.
 - [x] Crop
 - [x] Show a proceed button when clicked on crop, Then when user click on proceed, it will save the previous changes and then it will show the crop tool
 - [ ] Try displaing toolbar on the top of the canvas
+- [ ] Make the text tool draggable anywhere on the canvas
 - [x] Add curve tool to draw curves on the image
-    
+- [x] Add a curve arrow tool to draw curves with arrowheads on the image
+- [ ] The curve should be smooth automatically after finishing the curve
+
 **Bugs**
 
 - [ ] When you click on the image, the canvas is not centered
