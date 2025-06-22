@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { IssueImage } from "@/types";
+import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
   DialogContent,
@@ -157,6 +158,44 @@ export default function ImageEditorModal({
     color: currentColor,
     backgroundColor: null,
   });
+
+  // drag and drop
+
+  // ...inside your component, after other useState hooks...
+  const [placedTexts, setPlacedTexts] = useState<
+    Array<{
+      id: string;
+      text: string;
+      position: Point;
+      style: TextStyle;
+      draggable: boolean;
+    }>
+  >([]);
+
+  const dragLabelId = useRef<string | null>(null);
+
+  const handleLabelDragStart = (id: string) => {
+    dragLabelId.current = id;
+  };
+
+  const handleLabelDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleLabelDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!dragLabelId.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setPlacedTexts((prev) =>
+      prev.map((label) =>
+        label.id === dragLabelId.current
+          ? { ...label, position: { x, y } }
+          : label
+      )
+    );
+    dragLabelId.current = null;
+  };
 
   const { toast } = useToast();
 
@@ -779,12 +818,23 @@ export default function ImageEditorModal({
     tempCtx.drawImage(baseCanvas, 0, 0);
     tempCtx.drawImage(drawingCanvas, 0, 0);
 
+    // Draw all placed texts
+    placedTexts.forEach((label) => {
+      drawText(
+        tempCtx,
+        label.position.x,
+        label.position.y,
+        label.text,
+        label.style
+      );
+    });
+
     // Get the combined result
     const dataUrl = tempCanvas.toDataURL("image/png");
     onSave(dataUrl);
   };
 
-  console.log(isTextToolActive);
+  console.log(isTextToolActive, "jai maa kali");
 
   const FloatingTextInput = ({
     position,
@@ -807,6 +857,8 @@ export default function ImageEditorModal({
         onSubmit(inputText);
         setInputText("");
         setTextInputPosition(null);
+        setActiveTool(null);
+        setIsTextToolActive(false);
       } else if (e.key === "Escape") {
         setInputText("");
         setTextInputPosition(null);
@@ -1602,7 +1654,11 @@ export default function ImageEditorModal({
           </div>
 
           {/* Canvas Area */}
-          <div className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-auto relative">
+          <div
+            className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-auto relative"
+            onDragOver={handleLabelDragOver}
+            onDrop={handleLabelDrop}
+          >
             <canvas
               ref={baseCanvasRef}
               className="max-w-full max-h-full object-contain shadow-lg absolute top-0 left-0"
@@ -1652,24 +1708,74 @@ export default function ImageEditorModal({
               />
             )}
 
+            {placedTexts.map((label) => (
+              <div
+                key={label.id}
+                style={{
+                  position: "absolute",
+                  left: label.position.x,
+                  top: label.position.y - label.style.fontSize / 2,
+                  zIndex: 20,
+                  fontSize: label.style.fontSize,
+                  fontFamily: label.style.fontFamily,
+                  color: label.style.color,
+                  background: label.style.backgroundColor || "transparent",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  userSelect: "none",
+                  border: label.draggable ? "1px dashed #888" : "none",
+                  cursor: label.draggable ? "move" : "default",
+                  boxShadow: label.draggable
+                    ? "0 2px 8px rgba(0,0,0,0.08)"
+                    : undefined,
+                  transition: "box-shadow 0.2s",
+                }}
+                draggable={label.draggable}
+                onDragStart={() => handleLabelDragStart(label.id)}
+              >
+                {label.text}
+                {!label.draggable && (
+                  <button
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 12,
+                      background: "#eee",
+                      border: "1px solid #ccc",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() =>
+                      setPlacedTexts((prev) =>
+                        prev.map((l) =>
+                          l.id === label.id ? { ...l, draggable: true } : l
+                        )
+                      )
+                    }
+                  >
+                    Make Draggable
+                  </button>
+                )}
+              </div>
+            ))}
+
             {textInputPosition && isTextToolActive && (
               <FloatingTextInput
                 position={textInputPosition}
                 onSubmit={(submittedText) => {
-                  const drawingCanvas = drawingCanvasRef.current;
-                  const ctx = drawingCanvas?.getContext("2d");
-                  if (!drawingCanvas || !ctx) return;
-
-                  drawText(
-                    ctx,
-                    textInputPosition.x,
-                    textInputPosition.y,
-                    submittedText,
-                    textStyle
-                  );
-                  setTextInputPosition(null); // Clear text input position after submission
+                  setPlacedTexts((prev) => [
+                    ...prev,
+                    {
+                      id: uuidv4(),
+                      text: submittedText,
+                      position: textInputPosition,
+                      style: { ...textStyle },
+                      draggable: false,
+                    },
+                  ]);
+                  setTextInputPosition(null);
                   setText("");
-                  saveHistory();
+                  setActiveTool(null);
+                  setIsTextToolActive(false);
                 }}
               />
             )}
