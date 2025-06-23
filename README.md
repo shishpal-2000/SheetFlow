@@ -20,3 +20,12 @@ To get started, take a look at src/app/page.tsx.
 - [ ] When you click on the image, the canvas is not centered
 - [x] when we click to open the image, below cell get selected
 - [ ] For some images the curve line is not created at mouse position but with some offset.
+
+
+**Responsiveness**
+
+- [ ] Max space to image 
+- [ ] Remove the upper area (image name, X icon)
+- [ ] Undo, Redo, Filter, Download button in one horizontal row (above image)
+- [ ] Undo Redo button in larger screens 
+- [ ] Save Changes, Cancel, Apply Filter, Download button in one horizontal line (larger screen)
