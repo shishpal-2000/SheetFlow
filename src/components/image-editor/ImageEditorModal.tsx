@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { IssueImage } from "@/types";
+import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
   DialogContent,
@@ -149,6 +150,44 @@ export default function ImageEditorModal({
     color: currentColor,
     backgroundColor: null,
   });
+
+  // drag and drop
+
+  // ...inside your component, after other useState hooks...
+  const [placedTexts, setPlacedTexts] = useState<
+    Array<{
+      id: string;
+      text: string;
+      position: Point;
+      style: TextStyle;
+      draggable: boolean;
+    }>
+  >([]);
+
+  const dragLabelId = useRef<string | null>(null);
+
+  const handleLabelDragStart = (id: string) => {
+    dragLabelId.current = id;
+  };
+
+  const handleLabelDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleLabelDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!dragLabelId.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setPlacedTexts((prev) =>
+      prev.map((label) =>
+        label.id === dragLabelId.current
+          ? { ...label, position: { x, y } }
+          : label
+      )
+    );
+    dragLabelId.current = null;
+  };
 
   const { toast } = useToast();
 
@@ -776,12 +815,23 @@ export default function ImageEditorModal({
     tempCtx.drawImage(baseCanvas, 0, 0);
     tempCtx.drawImage(drawingCanvas, 0, 0);
 
+    // Draw all placed texts
+    placedTexts.forEach((label) => {
+      drawText(
+        tempCtx,
+        label.position.x,
+        label.position.y,
+        label.text,
+        label.style
+      );
+    });
+
     // Get the combined result
     const dataUrl = tempCanvas.toDataURL("image/png");
     onSave(dataUrl);
   };
 
-  console.log(isTextToolActive);
+  console.log(isTextToolActive, "jai maa kali");
 
   const FloatingTextInput = ({
     position,
@@ -804,6 +854,8 @@ export default function ImageEditorModal({
         onSubmit(inputText);
         setInputText("");
         setTextInputPosition(null);
+        setActiveTool(null);
+        setIsTextToolActive(false);
       } else if (e.key === "Escape") {
         setInputText("");
         setTextInputPosition(null);
@@ -1832,27 +1884,335 @@ export default function ImageEditorModal({
                 </div>
               </div>
             )}
+
+            {/* Show stroke style selector for shape tools */}
+            {activeTool &&
+              [
+                "line",
+                "rectangle",
+                "circle",
+                "arrow",
+                "double-arrow",
+                "curve",
+              ].includes(activeTool) && (
+                <div className="mt-4">
+                  <Label
+                    htmlFor="stroke-style"
+                    className="flex items-center gap-2 mb-1"
+                  >
+                    <Grip className="h-4 w-4" /> Stroke Style
+                  </Label>
+                  <Select
+                    value={strokeStyle}
+                    onValueChange={(value: StrokeStyle) =>
+                      setStrokeStyle(value)
+                    }
+                  >
+                    <SelectTrigger id="stroke-style">
+                      <SelectValue placeholder="Select style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">
+                        <div className="flex items-center">
+                          <MinusIcon className="w-4 h-4 mr-2" /> Solid
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="dashed">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 mr-2 flex items-center">
+                            <div className="w-full border-t-2 border-dashed" />
+                          </div>
+                          Dashed
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="dotted">
+                        <div className="flex items-center">
+                          <DotIcon className="w-4 h-4 mr-2" /> Dotted
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="double">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 mr-2 flex flex-col justify-center gap-0.5">
+                            <div className="w-full border-t" />
+                            <div className="w-full border-t" />
+                          </div>
+                          Double
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+            {(activeTool as DrawingTool) === "text" && (
+              <div className="space-y-4 mt-2">
+                <div>
+                  <Label htmlFor="font-size" className="text-sm">
+                    Font Size: {textStyle.fontSize}px
+                  </Label>
+                  <Slider
+                    id="font-size"
+                    min={8}
+                    max={72}
+                    step={1}
+                    value={[textStyle.fontSize]}
+                    onValueChange={(value) =>
+                      setTextStyle((prev) => ({ ...prev, fontSize: value[0] }))
+                    }
+                    className="flex-grow"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="text-bg-color" className="text-sm">
+                    Background Color
+                  </Label>
+                  <Select
+                    value={textStyle.backgroundColor || "transparent"}
+                    onValueChange={(value) =>
+                      setTextStyle((prev) => ({
+                        ...prev,
+                        backgroundColor: value === "transparent" ? null : value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="text-bg-color">
+                      <SelectValue placeholder="Select background" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableBackgroundColors.map((color) => (
+                        <SelectItem key={color.value} value={color.value}>
+                          <div className="flex items-center">
+                            <div
+                              style={{ backgroundColor: color.value }}
+                              className="w-4 h-4 rounded-full mr-2 border"
+                            />
+                            {color.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <p className="text-sm text-muted-foreground mt-2">
+                  Click on the canvas to add text
+                </p>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <Label
+                htmlFor="color-picker"
+                className="flex items-center gap-2 mb-2"
+              >
+                <Palette className="h-4 w-4" /> Color
+              </Label>
+              <Select
+                value={currentColor || textStyle.color}
+                onValueChange={(value) => {
+                  setCurrentColor(value);
+                  setTextStyle((prev) => ({
+                    ...prev,
+                    color: value === "transparent" ? "black" : value,
+                  }));
+                }}
+              >
+                <SelectTrigger id="color-picker">
+                  <SelectValue placeholder="Select color" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableColors.map((color) => (
+                    <SelectItem key={color.value} value={color.value}>
+                      <div className="flex items-center">
+                        <div
+                          style={{ backgroundColor: color.value }}
+                          className="w-4 h-4 rounded-full mr-2 border"
+                        />
+                        {color.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="mt-2">
+              <Label htmlFor="brush-size" className="mb-2 block">
+                Brush Size: {brushSize}px
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setBrushSize((s) => Math.max(minBrushSize, s - 1))
+                  }
+                  className="h-8 w-8"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Slider
+                  id="brush-size"
+                  min={minBrushSize}
+                  max={maxBrushSize}
+                  step={1}
+                  value={[brushSize]}
+                  onValueChange={(value) => setBrushSize(value[0])}
+                  className="flex-grow"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setBrushSize((s) => Math.min(maxBrushSize, s + 1))
+                  }
+                  className="h-8 w-8"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Canvas Area */}
+          <div
+            className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-auto relative"
+            onDragOver={handleLabelDragOver}
+            onDrop={handleLabelDrop}
+          >
+            <canvas
+              ref={baseCanvasRef}
+              className="max-w-full max-h-full object-contain shadow-lg absolute top-0 left-0"
+            />
+            <canvas
+              ref={drawingCanvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              className="max-w-full max-h-full object-contain"
+              style={{
+                display: "block",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                cursor:
+                  activeTool === "crop"
+                    ? "crosshair"
+                    : (activeTool as DrawingTool) === "text"
+                    ? "text"
+                    : activeTool === null
+                    ? "default"
+                    : "crosshair",
+              }}
+            />
+
+            {activeTool === "curve" && (
+              <CurveTool
+                active={activeTool === "curve"}
+                canvasRef={drawingCanvasRef}
+                currentColor={currentColor}
+                setActiveTool={setActiveTool}
+                strokeStyle={strokeStyle}
+                brushSize={brushSize}
+              />
+            )}
+
+            {activeTool === "curve-arrow" && (
+              <CurveArrowTool
+                active={activeTool === "curve-arrow"}
+                canvasRef={drawingCanvasRef}
+                currentColor={currentColor}
+                setActiveTool={setActiveTool}
+                strokeStyle={strokeStyle}
+                brushSize={brushSize}
+              />
+            )}
+
+            {placedTexts.map((label) => (
+              <div
+                key={label.id}
+                style={{
+                  position: "absolute",
+                  left: label.position.x,
+                  top: label.position.y - label.style.fontSize / 2,
+                  zIndex: 20,
+                  fontSize: label.style.fontSize,
+                  fontFamily: label.style.fontFamily,
+                  color: label.style.color,
+                  background: label.style.backgroundColor || "transparent",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  userSelect: "none",
+                  border: label.draggable ? "1px dashed #888" : "none",
+                  cursor: label.draggable ? "move" : "default",
+                  boxShadow: label.draggable
+                    ? "0 2px 8px rgba(0,0,0,0.08)"
+                    : undefined,
+                  transition: "box-shadow 0.2s",
+                }}
+                draggable={label.draggable}
+                onDragStart={() => handleLabelDragStart(label.id)}
+              >
+                {label.text}
+                {!label.draggable && (
+                  <button
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 12,
+                      background: "#eee",
+                      border: "1px solid #ccc",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() =>
+                      setPlacedTexts((prev) =>
+                        prev.map((l) =>
+                          l.id === label.id ? { ...l, draggable: true } : l
+                        )
+                      )
+                    }
+                  >
+                    Make Draggable
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {textInputPosition && isTextToolActive && (
+              <FloatingTextInput
+                position={textInputPosition}
+                onSubmit={(submittedText) => {
+                  setPlacedTexts((prev) => [
+                    ...prev,
+                    {
+                      id: uuidv4(),
+                      text: submittedText,
+                      position: textInputPosition,
+                      style: { ...textStyle },
+                      draggable: false,
+                    },
+                  ]);
+                  setTextInputPosition(null);
+                  setText("");
+                  setActiveTool(null);
+                  setIsTextToolActive(false);
+                }}
+              />
+            )}
+
+            {/* Crop area is handled by drawCropOverlay */}
           </div>
         </div>
 
-        {/* Dialog Footer - 2x2 grid for buttons */}
-        <DialogFooter className="px-4 py-2 sm:p-4 border-t flex justify-end flex-row gap-2">
-          <Button
-            variant={"outline"}
-            onClick={applyBlackAndWhite}
-            className="flex items-center text-[12px] w-max"
-          >
+        <DialogFooter className="p-4 border-t">
+          <Button variant={"outline"} onClick={applyBlackAndWhite}>
             <Filter className="h-4 w-4" />
-            {/* Apply Filter */}
+            Apply Filter
           </Button>
-          <Button
-            variant={"secondary"}
-            onClick={downloadImage}
-            type="button"
-            className="flex items-center text-[12px] w-max"
-          >
-            <Download className="h-4 w-4" />
-            {/* Download */}
+          <Button variant={"secondary"} onClick={downloadImage} type="button">
+            <Download className="h-4 w-4" /> Download
           </Button>
           <DialogClose asChild>
             <Button
