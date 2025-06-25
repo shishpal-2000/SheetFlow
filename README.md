@@ -14,18 +14,19 @@ To get started, take a look at src/app/page.tsx.
 - [x] Add curve tool to draw curves on the image
 - [x] Add a curve arrow tool to draw curves with arrowheads on the image
 - [ ] The curve should be smooth automatically after finishing the curve
+- [ ] Add options in crop to select the area to crop in aspect-ratios - 3:4, 9:16 etc
 
 **Bugs**
 
 - [ ] When you click on the image, the canvas is not centered
 - [x] when we click to open the image, below cell get selected
 - [ ] For some images the curve line is not created at mouse position but with some offset.
-
+- [ ] In Mobile view the Curve tool is only working correctly when a stylus is used - the surface area of the finger tips is making it hard to draw with fingers.
 
 **Responsiveness**
 
-- [ ] Max space to image 
+- [ ] Max space to image
 - [ ] Remove the upper area (image name, X icon)
 - [ ] Undo, Redo, Filter, Download button in one horizontal row (above image)
-- [ ] Undo Redo button in larger screens 
+- [ ] Undo Redo button in larger screens
 - [ ] Save Changes, Cancel, Apply Filter, Download button in one horizontal line (larger screen)
