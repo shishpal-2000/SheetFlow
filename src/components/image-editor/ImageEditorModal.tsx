@@ -229,6 +229,94 @@ export default function ImageEditorModal({
 
   const { toast } = useToast();
 
+  // const drawImageOnCanvas = useCallback(() => {
+  //   const baseCanvas = baseCanvasRef.current;
+  //   const drawingCanvas = drawingCanvasRef.current;
+  //   const baseCtx = baseCanvas?.getContext("2d");
+  //   const drawingCtx = drawingCanvas?.getContext("2d");
+
+  //   if (!baseCanvas || !baseCtx || !drawingCanvas || !drawingCtx) return;
+
+  //   const img = new Image();
+  //   img.crossOrigin = "anonymous";
+  //   img.src = image.url;
+  //   img.onload = () => {
+  //     // const container = baseCanvas.parentElement;
+  //     // if (!container) return;
+
+  //     // const containerRect = container.getBoundingClientRect();
+  //     // const containerWidth = containerRect.width;
+  //     // const containerHeight = containerRect.height;
+
+  //     // const aspectRatio = img.naturalWidth / img.naturalHeight;
+  //     // let newWidth = containerWidth;
+  //     // let newHeight = newWidth / aspectRatio;
+
+  //     // // If the new height is greater than the container height, scale down
+  //     // if (newHeight > containerHeight) {
+  //     //   newHeight = containerHeight;
+  //     //   newWidth = newHeight * aspectRatio;
+  //     // }
+
+  //     // Set fixed canvas dimensions
+  //     const canvasWidth = 800; // Fixed width
+  //     const canvasHeight = 600; // Fixed height
+
+  //     baseCanvas.width = canvasWidth;
+  //     baseCanvas.height = canvasHeight;
+  //     drawingCanvas.width = canvasWidth;
+  //     drawingCanvas.height = canvasHeight;
+
+  //     // Clear both cnavas
+  //     baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+  //     drawingCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+  //     // Calculate aspect ratio and contain the image
+  //     const imageAspectRatio = img.naturalWidth / img.naturalHeight;
+  //     const canvasAspectRatio = canvasWidth / canvasHeight;
+
+  //     let drawWidth, drawHeight, offSetX, offSetY;
+
+  //     if (imageAspectRatio > canvasAspectRatio) {
+  //       // If image is wider - fit by width
+  //       drawWidth = canvasWidth;
+  //       drawHeight = canvasWidth / imageAspectRatio;
+  //       offSetX = 0;
+  //       offSetY = (canvasHeight - drawHeight) / 2;
+  //     } else {
+  //       // If image is taller - fit by height
+  //       drawWidth = canvasHeight * imageAspectRatio;
+  //       drawHeight = canvasHeight;
+  //       offSetX = (canvasWidth - drawWidth) / 2;
+  //       offSetY = 0;
+  //     }
+
+  //     // Draw the image centered on the base canvas
+  //     // const x = (newWidth - img.naturalWidth) / 2;
+  //     // const y = (newHeight - img.naturalHeight) / 2;
+  //     // const scale = Math.min(
+  //     //   newWidth / img.naturalWidth,
+  //     //   newHeight / img.naturalHeight
+  //     // );
+
+  //     // const scaleWidth = img.naturalWidth * scale;
+  //     // const scaleHeight = img.naturalHeight * scale;
+
+  //     // const centerX = (newWidth - scaleWidth) / 2;
+  //     // const centerY = (newHeight - scaleHeight) / 2;
+
+  //     // baseCtx.drawImage(img, centerX, centerY, scaleWidth, scaleHeight);
+
+  //     baseCtx.drawImage(img, offSetX, offSetY, drawWidth, drawHeight);
+
+  //     drawingCtx.globalCompositeOperation = "source-over";
+  //     saveHistory();
+  //   };
+  //   img.onerror = () => {
+  //     console.error("Failed to load image for editing.");
+  //   };
+  // }, [image.url]);
+
   const drawImageOnCanvas = useCallback(() => {
     const baseCanvas = baseCanvasRef.current;
     const drawingCanvas = drawingCanvasRef.current;
@@ -241,33 +329,32 @@ export default function ImageEditorModal({
     img.crossOrigin = "anonymous";
     img.src = image.url;
     img.onload = () => {
-      // const container = baseCanvas.parentElement;
-      // if (!container) return;
+      // Get container element and calculate responsive dimensions
+      const container = baseCanvas.parentElement;
+      if (!container) return;
 
-      // const containerRect = container.getBoundingClientRect();
-      // const containerWidth = containerRect.width;
-      // const containerHeight = containerRect.height;
+      const isMobile = window.innerWidth < 1024;
 
-      // const aspectRatio = img.naturalWidth / img.naturalHeight;
-      // let newWidth = containerWidth;
-      // let newHeight = newWidth / aspectRatio;
+      let canvasWidth, canvasHeight;
 
-      // // If the new height is greater than the container height, scale down
-      // if (newHeight > containerHeight) {
-      //   newHeight = containerHeight;
-      //   newWidth = newHeight * aspectRatio;
-      // }
+      if (isMobile) {
+        // On mobile, use full container dimensions
+        const containerRect = container.getBoundingClientRect();
+        canvasWidth = containerRect.width;
+        canvasHeight = containerRect.height;
+      } else {
+        // On desktop, use fixed dimensions
+        canvasWidth = 800;
+        canvasHeight = 600;
+      }
 
-      // Set fixed canvas dimensions
-      const canvasWidth = 800; // Fixed width
-      const canvasHeight = 600; // Fixed height
-
+      // Set canvas dimensions
       baseCanvas.width = canvasWidth;
       baseCanvas.height = canvasHeight;
       drawingCanvas.width = canvasWidth;
       drawingCanvas.height = canvasHeight;
 
-      // Clear both cnavas
+      // Clear both canvases
       baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
       drawingCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -275,39 +362,24 @@ export default function ImageEditorModal({
       const imageAspectRatio = img.naturalWidth / img.naturalHeight;
       const canvasAspectRatio = canvasWidth / canvasHeight;
 
-      let drawWidth, drawHeight, offSetX, offSetY;
+      let drawWidth, drawHeight, offsetX, offsetY;
 
       if (imageAspectRatio > canvasAspectRatio) {
-        // If image is wider - fit by width
+        // Image is wider - fit by width
         drawWidth = canvasWidth;
         drawHeight = canvasWidth / imageAspectRatio;
-        offSetX = 0;
-        offSetY = (canvasHeight - drawHeight) / 2;
+        offsetX = 0;
+        offsetY = (canvasHeight - drawHeight) / 2;
       } else {
-        // If image is taller - fit by height
+        // Image is taller - fit by height
         drawWidth = canvasHeight * imageAspectRatio;
         drawHeight = canvasHeight;
-        offSetX = (canvasWidth - drawWidth) / 2;
-        offSetY = 0;
+        offsetX = (canvasWidth - drawWidth) / 2;
+        offsetY = 0;
       }
 
-      // Draw the image centered on the base canvas
-      // const x = (newWidth - img.naturalWidth) / 2;
-      // const y = (newHeight - img.naturalHeight) / 2;
-      // const scale = Math.min(
-      //   newWidth / img.naturalWidth,
-      //   newHeight / img.naturalHeight
-      // );
-
-      // const scaleWidth = img.naturalWidth * scale;
-      // const scaleHeight = img.naturalHeight * scale;
-
-      // const centerX = (newWidth - scaleWidth) / 2;
-      // const centerY = (newHeight - scaleHeight) / 2;
-
-      // baseCtx.drawImage(img, centerX, centerY, scaleWidth, scaleHeight);
-
-      baseCtx.drawImage(img, offSetX, offSetY, drawWidth, drawHeight);
+      // Draw the image contained within the canvas
+      baseCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
       drawingCtx.globalCompositeOperation = "source-over";
       saveHistory();
@@ -330,6 +402,20 @@ export default function ImageEditorModal({
 
     return () => clearTimeout(timeout);
   }, [isOpen, image.url, drawImageOnCanvas]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleResize = () => {
+      // Redraw canvas with new dimensions on resize
+      if (baseCanvasRef.current && drawingCanvasRef.current) {
+        drawImageOnCanvas();
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isOpen, drawImageOnCanvas]);
 
   const saveHistory = () => {
     const drawingCanvas = drawingCanvasRef.current;
@@ -1442,7 +1528,7 @@ export default function ImageEditorModal({
           <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative">
             <div
               // className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-hidden relative p-2 w-[800px] h-[600px]"
-              className="relative border-2 border-gray-300 w-[800px] h-[600px]"
+              className="relative border-2 border-gray-300 w-full h-full lg:w-[800px] lg:h-[600px]"
               onDragOver={handleLabelDragOver}
               onDrop={handleLabelDrop}
               id="drawing-canvas"
@@ -1450,12 +1536,7 @@ export default function ImageEditorModal({
               <canvas
                 ref={baseCanvasRef}
                 // className="w-full h-full max-w-full max-h-full object-contain shadow-lg py-2 sm:py-0"
-                className="absolute inset-0 bg-white"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
+                className="absolute inset-0 bg-white object-contain w-full h-full"
               />
               <canvas
                 ref={drawingCanvasRef}
@@ -1466,10 +1547,8 @@ export default function ImageEditorModal({
                 onTouchStart={startDrawing}
                 onTouchMove={draw}
                 onTouchEnd={stopDrawing}
-                className="absolute inset-0"
+                className="absolute inset-0 w-full h-full"
                 style={{
-                  width: "100%",
-                  height: "100%",
                   cursor:
                     activeTool === "text"
                       ? "text"
