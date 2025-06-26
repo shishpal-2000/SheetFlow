@@ -22,6 +22,9 @@ To get started, take a look at src/app/page.tsx.
 - [x] when we click to open the image, below cell get selected
 - [ ] For some images the curve line is not created at mouse position but with some offset.
 - [ ] In Mobile view the Curve tool is only working correctly when a stylus is used - the surface area of the finger tips is making it hard to draw with fingers.
+- [ ] The canvas is taking full width of its parent div's parent div.
+- [ ] We are able to draw outside the image also.
+- [ ] The curve arrow tools arrow heads are not drawn correctly.
 
 **Responsiveness**
 
