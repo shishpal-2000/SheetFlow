@@ -2,6 +2,14 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { IssueImage } from "@/types";
+import dynamic from "next/dynamic";
+const TextEditor = dynamic(() => import("./TextEditor"), { ssr: false });
+import type { TextEditorHandle, KonvaTextShape } from "./TextEditor";
+const KonvaRectangle = dynamic(() => import("./KonvaRectangle"), {
+  ssr: false,
+});
+import type { KonvaRectangleHandle } from "./KonvaRectangle";
+
 import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
@@ -44,7 +52,6 @@ import {
   Filter,
 } from "lucide-react";
 import { CurveTool } from "./CurveTool";
-import TextTool from "./TextTool";
 import CurveArrowTool from "./CurveArrowTool";
 
 interface ImageEditorModalProps {
@@ -138,6 +145,49 @@ export default function ImageEditorModal({
   const [showCurveConfirm, setShowCurveConfirm] = useState(false);
   const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
 
+  // jai maa kali
+  const [rectangles, setRectangles] = useState<any[]>([]);
+  const konvaRectRef = useRef<KonvaRectangleHandle>(null);
+
+  const [texts, setTexts] = useState<KonvaTextShape[]>([]);
+  const textEditorRef = useRef<TextEditorHandle>(null);
+  const [fontFamily, setFontFamily] = useState<FontFamily>("sans-serif");
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleKonvaRectFlatten = useCallback((rects: any) => {
+    if (!drawingCanvasRef.current) return;
+    const ctx = drawingCanvasRef.current.getContext("2d");
+    if (!ctx) return;
+    rects.forEach((r: any) => {
+      ctx.save();
+      ctx.strokeStyle = r.stroke;
+      ctx.lineWidth = r.strokeWidth ?? 1;
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
+      ctx.restore();
+    });
+    setRectangles([]);
+    saveHistory();
+  }, []);
+
+  const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
+    if (!drawingCanvasRef.current) return;
+    const ctx = drawingCanvasRef.current.getContext("2d");
+    if (!ctx) return;
+    textShapes.forEach((t) => {
+      ctx.save();
+      ctx.font = `${t.fontSize}px ${t.fontFamily}`;
+      ctx.fillStyle = t.fill;
+      ctx.fillText(t.text, t.x, t.y + t.fontSize); // y + fontSize for baseline
+      ctx.restore();
+    });
+    setTexts([]);
+    saveHistory();
+  }, []);
+
   // Crop-related state
   const [cropArea, setCropArea] = useState<CropArea | null>(null);
   const [isCropping, setIsCropping] = useState<boolean>(false);
@@ -228,94 +278,6 @@ export default function ImageEditorModal({
   };
 
   const { toast } = useToast();
-
-  // const drawImageOnCanvas = useCallback(() => {
-  //   const baseCanvas = baseCanvasRef.current;
-  //   const drawingCanvas = drawingCanvasRef.current;
-  //   const baseCtx = baseCanvas?.getContext("2d");
-  //   const drawingCtx = drawingCanvas?.getContext("2d");
-
-  //   if (!baseCanvas || !baseCtx || !drawingCanvas || !drawingCtx) return;
-
-  //   const img = new Image();
-  //   img.crossOrigin = "anonymous";
-  //   img.src = image.url;
-  //   img.onload = () => {
-  //     // const container = baseCanvas.parentElement;
-  //     // if (!container) return;
-
-  //     // const containerRect = container.getBoundingClientRect();
-  //     // const containerWidth = containerRect.width;
-  //     // const containerHeight = containerRect.height;
-
-  //     // const aspectRatio = img.naturalWidth / img.naturalHeight;
-  //     // let newWidth = containerWidth;
-  //     // let newHeight = newWidth / aspectRatio;
-
-  //     // // If the new height is greater than the container height, scale down
-  //     // if (newHeight > containerHeight) {
-  //     //   newHeight = containerHeight;
-  //     //   newWidth = newHeight * aspectRatio;
-  //     // }
-
-  //     // Set fixed canvas dimensions
-  //     const canvasWidth = 800; // Fixed width
-  //     const canvasHeight = 600; // Fixed height
-
-  //     baseCanvas.width = canvasWidth;
-  //     baseCanvas.height = canvasHeight;
-  //     drawingCanvas.width = canvasWidth;
-  //     drawingCanvas.height = canvasHeight;
-
-  //     // Clear both cnavas
-  //     baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-  //     drawingCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-  //     // Calculate aspect ratio and contain the image
-  //     const imageAspectRatio = img.naturalWidth / img.naturalHeight;
-  //     const canvasAspectRatio = canvasWidth / canvasHeight;
-
-  //     let drawWidth, drawHeight, offSetX, offSetY;
-
-  //     if (imageAspectRatio > canvasAspectRatio) {
-  //       // If image is wider - fit by width
-  //       drawWidth = canvasWidth;
-  //       drawHeight = canvasWidth / imageAspectRatio;
-  //       offSetX = 0;
-  //       offSetY = (canvasHeight - drawHeight) / 2;
-  //     } else {
-  //       // If image is taller - fit by height
-  //       drawWidth = canvasHeight * imageAspectRatio;
-  //       drawHeight = canvasHeight;
-  //       offSetX = (canvasWidth - drawWidth) / 2;
-  //       offSetY = 0;
-  //     }
-
-  //     // Draw the image centered on the base canvas
-  //     // const x = (newWidth - img.naturalWidth) / 2;
-  //     // const y = (newHeight - img.naturalHeight) / 2;
-  //     // const scale = Math.min(
-  //     //   newWidth / img.naturalWidth,
-  //     //   newHeight / img.naturalHeight
-  //     // );
-
-  //     // const scaleWidth = img.naturalWidth * scale;
-  //     // const scaleHeight = img.naturalHeight * scale;
-
-  //     // const centerX = (newWidth - scaleWidth) / 2;
-  //     // const centerY = (newHeight - scaleHeight) / 2;
-
-  //     // baseCtx.drawImage(img, centerX, centerY, scaleWidth, scaleHeight);
-
-  //     baseCtx.drawImage(img, offSetX, offSetY, drawWidth, drawHeight);
-
-  //     drawingCtx.globalCompositeOperation = "source-over";
-  //     saveHistory();
-  //   };
-  //   img.onerror = () => {
-  //     console.error("Failed to load image for editing.");
-  //   };
-  // }, [image.url]);
 
   const drawImageOnCanvas = useCallback(() => {
     const baseCanvas = baseCanvasRef.current;
@@ -518,6 +480,14 @@ export default function ImageEditorModal({
   };
 
   const handleToolChange = (tool: DrawingTool) => {
+    // If leaving rectangle tool, flatten rectangles before switching
+    if (activeTool === "rectangle" && konvaRectRef.current) {
+      konvaRectRef.current.flatten();
+    }
+
+    if (activeTool === "text" && textEditorRef.current) {
+      textEditorRef.current.flatten();
+    }
     // Clean up crop tool state
     if (tool === "crop") {
       setCropArea(null);
@@ -960,6 +930,12 @@ export default function ImageEditorModal({
       return;
     }
 
+    if (konvaRectRef.current) {
+      konvaRectRef.current.flatten();
+    }
+    if (textEditorRef.current) {
+      textEditorRef.current.flatten();
+    }
     const baseCanvas = baseCanvasRef.current;
     const drawingCanvas = drawingCanvasRef.current;
     if (!baseCanvas || !drawingCanvas) return;
@@ -1051,7 +1027,7 @@ export default function ImageEditorModal({
         onMouseDown={(e) => e.stopPropagation()} // Prevent canvas events from interfering
         tabIndex={-1} // Make the container focusable
       >
-        <input
+        {/* <input
           ref={inputRef}
           type="text"
           value={inputText}
@@ -1069,7 +1045,7 @@ export default function ImageEditorModal({
             width: "100%",
           }}
           placeholder="Type and press Enter..."
-        />
+        /> */}
         <div className="grid grid-cols-2 gap-2">
           <Select
             value={textStyle.backgroundColor || "transparent"}
@@ -1527,7 +1503,6 @@ export default function ImageEditorModal({
 
           <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative">
             <div
-              // className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-hidden relative p-2 w-[800px] h-[600px]"
               className="relative border-2 border-gray-300 w-full h-full lg:w-[800px] lg:h-[600px]"
               onDragOver={handleLabelDragOver}
               onDrop={handleLabelDrop}
@@ -1535,7 +1510,6 @@ export default function ImageEditorModal({
             >
               <canvas
                 ref={baseCanvasRef}
-                // className="w-full h-full max-w-full max-h-full object-contain shadow-lg py-2 sm:py-0"
                 className="absolute inset-0 bg-white object-contain w-full h-full"
               />
               <canvas
@@ -1557,6 +1531,19 @@ export default function ImageEditorModal({
                       : "crosshair",
                 }}
               />
+              {mounted && activeTool === "rectangle" && (
+                <KonvaRectangle
+                  ref={konvaRectRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "rectangle"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  rectangles={rectangles}
+                  setRectangles={setRectangles}
+                  onFlatten={handleKonvaRectFlatten}
+                />
+              )}
 
               {activeTool === "curve" && (
                 <CurveTool
@@ -1577,6 +1564,21 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
+                />
+              )}
+
+              {mounted && activeTool === "text" && (
+                <TextEditor
+                  ref={textEditorRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "text"}
+                  color={currentColor}
+                  fontSize={fontSize}
+                  fontFamily={fontFamily}
+                  texts={texts}
+                  setTexts={setTexts}
+                  onFlatten={handleTextFlatten}
                 />
               )}
 
@@ -1655,13 +1657,9 @@ export default function ImageEditorModal({
                   }}
                 />
               )}
-              {/* Crop area is handled by drawCropOverlay */}
             </div>
           </div>
 
-          {/* --- Small Screen Controls (Bottom Section) --- */}
-          {/* This section contains Undo/Redo, and then horizontally scrollable tools, then color/brush size below the tools. */}
-          {/* This is visible only on screens smaller than 'lg'. */}
           <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 gap-2 border-t relative">
             {/* Tools Section (horizontally scrollable) */}
             <div className="w-full flex-shrink-0 flex flex-row gap-2 p-2 border rounded-md sm:mt-4 h-12 sm:h-auto items-center">
@@ -2112,269 +2110,7 @@ export default function ImageEditorModal({
                   </Select>
                 </div>
               )}
-
-            {/* {(activeTool as DrawingTool) === "text" && (
-              <div className="space-y-4 mt-2">
-                <div>
-                  <Label htmlFor="font-size" className="text-sm">
-                    Font Size: {textStyle.fontSize}px
-                  </Label>
-                  <Slider
-                    id="font-size"
-                    min={8}
-                    max={72}
-                    step={1}
-                    value={[textStyle.fontSize]}
-                    onValueChange={(value) =>
-                      setTextStyle((prev) => ({ ...prev, fontSize: value[0] }))
-                    }
-                    className="flex-grow"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="text-bg-color" className="text-sm">
-                    Background Color
-                  </Label>
-                  <Select
-                    value={textStyle.backgroundColor || "transparent"}
-                    onValueChange={(value) =>
-                      setTextStyle((prev) => ({
-                        ...prev,
-                        backgroundColor: value === "transparent" ? null : value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger id="text-bg-color">
-                      <SelectValue placeholder="Select background" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableBackgroundColors.map((color) => (
-                        <SelectItem key={color.value} value={color.value}>
-                          <div className="flex items-center">
-                            <div
-                              style={{ backgroundColor: color.value }}
-                              className="w-4 h-4 rounded-full mr-2 border"
-                            />
-                            {color.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <p className="text-sm text-muted-foreground mt-2">
-                  Click on the canvas to add text
-                </p>
-              </div>
-            )} */}
-
-            {/* <div className="mt-4">
-              <Label
-                htmlFor="color-picker"
-                className="flex items-center gap-2 mb-2"
-              >
-                <Palette className="h-4 w-4" /> Color
-              </Label>
-              <Select
-                value={currentColor || textStyle.color}
-                onValueChange={(value) => {
-                  setCurrentColor(value);
-                  setTextStyle((prev) => ({
-                    ...prev,
-                    color: value === "transparent" ? "black" : value,
-                  }));
-                }}
-              >
-                <SelectTrigger id="color-picker">
-                  <SelectValue placeholder="Select color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableColors.map((color) => (
-                    <SelectItem key={color.value} value={color.value}>
-                      <div className="flex items-center">
-                        <div
-                          style={{ backgroundColor: color.value }}
-                          className="w-4 h-4 rounded-full mr-2 border"
-                        />
-                        {color.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div> */}
-
-            {/* <div className="mt-2">
-              <Label htmlFor="brush-size" className="mb-2 block">
-                Brush Size: {brushSize}px
-              </Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setBrushSize((s) => Math.max(minBrushSize, s - 1))
-                  }
-                  className="h-8 w-8"
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Slider
-                  id="brush-size"
-                  min={minBrushSize}
-                  max={maxBrushSize}
-                  step={1}
-                  value={[brushSize]}
-                  onValueChange={(value) => setBrushSize(value[0])}
-                  className="flex-grow"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setBrushSize((s) => Math.min(maxBrushSize, s + 1))
-                  }
-                  className="h-8 w-8"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div> */}
           </div>
-
-          {/* Canvas Area */}
-          {/* <div
-            className="flex-grow flex items-center justify-center bg-muted/30 rounded-md overflow-hidden relative p-2 w-full min-h-[300px] max-h-full"
-            onDragOver={handleLabelDragOver}
-            onDrop={handleLabelDrop}
-          >
-            <canvas
-              ref={baseCanvasRef}
-              className="w-full h-full max-w-full max-h-full object-contain shadow-lg absolute top-0 left-0 py-2"
-            />
-            <canvas
-              ref={drawingCanvasRef}
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-              className="w-full h-full max-w-full max-h-full object-contain"
-              style={{
-                display: "block",
-                position: "absolute",
-                top: 0,
-                left: 0,
-                cursor:
-                  activeTool === "crop"
-                    ? "crosshair"
-                    : activeTool === "text"
-                    ? "text"
-                    : activeTool === null
-                    ? "default"
-                    : "crosshair",
-              }}
-            />
-
-            {activeTool === "curve" && (
-              <CurveTool
-                active={activeTool === "curve"}
-                canvasRef={drawingCanvasRef}
-                currentColor={currentColor}
-                setActiveTool={setActiveTool}
-                strokeStyle={strokeStyle}
-                brushSize={brushSize}
-              />
-            )}
-
-            {activeTool === "curve-arrow" && (
-              <CurveArrowTool
-                active={activeTool === "curve-arrow"}
-                canvasRef={drawingCanvasRef}
-                currentColor={currentColor}
-                setActiveTool={setActiveTool}
-                strokeStyle={strokeStyle}
-                brushSize={brushSize}
-              />
-            )}
-
-            {placedTexts.map((label) => (
-              <div
-                key={label.id}
-                style={{
-                  position: "absolute",
-                  left: label.position.x,
-                  top: label.position.y - label.style.fontSize / 2,
-                  zIndex: 20,
-                  fontSize: label.style.fontSize,
-                  fontFamily: label.style.fontFamily,
-                  color: label.style.color,
-                  background: label.style.backgroundColor || "transparent",
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  userSelect: "none",
-                  border: label.draggable ? "1px dashed #888" : "none",
-                  cursor: label.draggable ? "move" : "default",
-                  boxShadow: label.draggable
-                    ? "0 2px 8px rgba(0,0,0,0.08)"
-                    : undefined,
-                  transition: "box-shadow 0.2s",
-                }}
-                draggable={label.draggable}
-                onDragStart={() => handleLabelDragStart(label.id)}
-              >
-                {label.text}
-                {!label.draggable && (
-                  <button
-                    style={{
-                      marginLeft: 8,
-                      fontSize: 12,
-                      background: "#eee",
-                      border: "1px solid #ccc",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                    onClick={() =>
-                      setPlacedTexts((prev) =>
-                        prev.map((l) =>
-                          l.id === label.id ? { ...l, draggable: true } : l
-                        )
-                      )
-                    }
-                  >
-                    Make Draggable
-                  </button>
-                )}
-              </div>
-            ))}
-
-            {textInputPosition && isTextToolActive && (
-              <FloatingTextInput
-                position={textInputPosition}
-                onSubmit={(submittedText) => {
-                  setPlacedTexts((prev) => [
-                    ...prev,
-                    {
-                      id: uuidv4(),
-                      text: submittedText,
-                      position: textInputPosition,
-                      style: { ...textStyle },
-                      draggable: false,
-                    },
-                  ]);
-                  setTextInputPosition(null);
-                  setText("");
-                  setActiveTool(null);
-                  setIsTextToolActive(false);
-                }}
-              />
-            )}
-
-          </div> */}
         </div>
 
         {/* Dialog Footer - 2x2 grid for buttons */}
