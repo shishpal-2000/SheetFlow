@@ -140,17 +140,47 @@ export default function ImageEditorModal({
     setMounted(true);
   }, []);
 
-  const handleKonvaRectFlatten = useCallback((rects: any) => {
+  // const handleKonvaRectFlatten = useCallback((rects: any) => {
+  //   if (!drawingCanvasRef.current) return;
+  //   const ctx = drawingCanvasRef.current.getContext("2d");
+  //   if (!ctx) return;
+  //   rects.forEach((r: any) => {
+  //     ctx.save();
+  //     ctx.strokeStyle = r.stroke;
+  //     ctx.lineWidth = r.strokeWidth ?? 1;
+  //     ctx.strokeRect(r.x, r.y, r.width, r.height);
+  //     ctx.restore();
+  //   });
+  //   setRectangles([]);
+  //   saveHistory();
+  // }, []);
+
+  const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
     const ctx = drawingCanvasRef.current.getContext("2d");
     if (!ctx) return;
+
     rects.forEach((r: any) => {
-      ctx.save();
+      ctx.save(); // Save current state
+
+      // Set stroke style
       ctx.strokeStyle = r.stroke;
-      ctx.lineWidth = r.strokeWidth ?? 1;
-      ctx.strokeRect(r.x, r.y, r.width, r.height);
-      ctx.restore();
+      ctx.lineWidth = r.strokeWidth;
+
+      // Apply rotation transformation
+      const centerX = r.x + r.width / 2;
+      const centerY = r.y + r.height / 2;
+
+      // Translate to center, rotate, then draw from center point
+      ctx.translate(centerX, centerY);
+      ctx.rotate(((r.rotation || 0) * Math.PI) / 180);
+
+      // Draw rectangle centered at origin (0,0) after transformation
+      ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
+
+      ctx.restore(); // Restore original state
     });
+
     setRectangles([]);
     saveHistory();
   }, []);

@@ -17,6 +17,7 @@ export interface KonvaRectangle {
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
+  rotation: number;
 }
 
 interface KonvaRectangleProps {
@@ -90,6 +91,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         stroke: color,
         strokeWidth: brushSize,
         draggable: true,
+        rotation: 0,
       });
       setSelectedId(id);
     };
@@ -127,6 +129,8 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       const node = e.target;
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
+      const rotation = node.rotation();
+
       node.scaleX(1);
       node.scaleY(1);
       setRectangles((rects) =>
@@ -138,6 +142,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
                 y: node.y(),
                 width: Math.max(5, node.width() * scaleX),
                 height: Math.max(5, node.height() * scaleY),
+                rotation: rotation,
               }
             : r
         )
@@ -173,6 +178,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               stroke={rect.stroke}
               strokeWidth={rect.strokeWidth}
               draggable={rect.draggable}
+              rotation={rect.rotation}
               onClick={() => handleRectClick(rect.id)}
               onTap={() => handleRectClick(rect.id)}
               onDragEnd={(e) => handleDragEnd(e, rect.id)}
@@ -192,12 +198,16 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           )}
           <Transformer
             ref={trRef}
-            rotateEnabled={false}
+            rotateEnabled={true}
             enabledAnchors={[
               "top-left",
               "top-right",
               "bottom-left",
               "bottom-right",
+              "middle-left",
+              "middle-right",
+              "top-center",
+              "bottom-center",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}
