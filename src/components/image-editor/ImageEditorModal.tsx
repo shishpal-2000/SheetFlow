@@ -178,19 +178,6 @@ export default function ImageEditorModal({
   const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
   const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
-  const [rectHistory, setRectHistory] = useState<any[][]>([]);
-  const [rectHistoryStep, setRectHistoryStep] = useState(-1);
-
-  const [circleHistory, setCircleHistory] = useState<KonvaCircleShape[][]>([]);
-  const [circleHistoryStep, setCircleHistoryStep] = useState(-1);
-
-  const [arrowHistory, setArrowHistory] = useState<KonvaArrow[][]>([]);
-  const [arrowHistoryStep, setArrowHistoryStep] = useState(-1);
-
-  const [doubleArrowHistory, setDoubleArrowHistory] = useState<
-    KonvaDoubleArrowShape[][]
-  >([]);
-  const [doubleArrowHistoryStep, setDoubleArrowHistoryStep] = useState(-1);
 
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
@@ -648,79 +635,6 @@ export default function ImageEditorModal({
       }
     }
   }, [historyStep, history]);
-
-  // Undo/Redo for each shape
-  const undoShape = useCallback(() => {
-    if (activeTool === "rectangle" && rectHistoryStep > 0) {
-      setRectHistoryStep(rectHistoryStep - 1);
-      setRectangles(rectHistory[rectHistoryStep - 1]);
-    } else if (activeTool === "circle" && circleHistoryStep > 0) {
-      setCircleHistoryStep(circleHistoryStep - 1);
-      setCircles(circleHistory[circleHistoryStep - 1]);
-    } else if (activeTool === "arrow" && arrowHistoryStep > 0) {
-      setArrowHistoryStep(arrowHistoryStep - 1);
-      setArrows(arrowHistory[arrowHistoryStep - 1]);
-    } else if (activeTool === "double-arrow" && doubleArrowHistoryStep > 0) {
-      setDoubleArrowHistoryStep(doubleArrowHistoryStep - 1);
-      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep - 1]);
-    } else {
-      // fallback to canvas undo
-      undo();
-    }
-  }, [
-    activeTool,
-    rectHistoryStep,
-    rectHistory,
-    circleHistoryStep,
-    circleHistory,
-    arrowHistoryStep,
-    arrowHistory,
-    doubleArrowHistoryStep,
-    doubleArrowHistory,
-    undo,
-  ]);
-
-  const redoShape = useCallback(() => {
-    if (
-      activeTool === "rectangle" &&
-      rectHistoryStep < rectHistory.length - 1
-    ) {
-      setRectHistoryStep(rectHistoryStep + 1);
-      setRectangles(rectHistory[rectHistoryStep + 1]);
-    } else if (
-      activeTool === "circle" &&
-      circleHistoryStep < circleHistory.length - 1
-    ) {
-      setCircleHistoryStep(circleHistoryStep + 1);
-      setCircles(circleHistory[circleHistoryStep + 1]);
-    } else if (
-      activeTool === "arrow" &&
-      arrowHistoryStep < arrowHistory.length - 1
-    ) {
-      setArrowHistoryStep(arrowHistoryStep + 1);
-      setArrows(arrowHistory[arrowHistoryStep + 1]);
-    } else if (
-      activeTool === "double-arrow" &&
-      doubleArrowHistoryStep < doubleArrowHistory.length - 1
-    ) {
-      setDoubleArrowHistoryStep(doubleArrowHistoryStep + 1);
-      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep + 1]);
-    } else {
-      // fallback to canvas redo
-      redo();
-    }
-  }, [
-    activeTool,
-    rectHistoryStep,
-    rectHistory,
-    circleHistoryStep,
-    circleHistory,
-    arrowHistoryStep,
-    arrowHistory,
-    doubleArrowHistoryStep,
-    doubleArrowHistory,
-    redo,
-  ]);
 
   // Add download function
   const downloadImage = () => {
