@@ -321,36 +321,37 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Reset transformations after applying them
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
       const rotation = node.rotation();
       const x = node.x();
       const y = node.y();
+
       const oldPoints = node.points();
 
-      // Calculate the current center of the arrow
+      // Calculate the center of the arrow
       const centerX = (oldPoints[0] + oldPoints[2]) / 2;
       const centerY = (oldPoints[1] + oldPoints[3]) / 2;
 
-      // Calculate current arrow length and angle
-      const currentLength = Math.sqrt(
+      // Calculate the original length and angle
+      const originalLength = Math.sqrt(
         Math.pow(oldPoints[2] - oldPoints[0], 2) +
           Math.pow(oldPoints[3] - oldPoints[1], 2)
       );
-
-      // Apply scaling to the length
-      const newLength = currentLength * Math.max(scaleX, scaleY);
-
-      // Calculate current angle of the arrow
-      const currentAngle = Math.atan2(
+      const originalAngle = Math.atan2(
         oldPoints[3] - oldPoints[1],
         oldPoints[2] - oldPoints[0]
       );
 
-      // Add rotation to current angle
-      const newAngle = currentAngle + rotation;
+      // Apply scaling to length
+      const newLength = originalLength * Math.max(scaleX, scaleY);
 
-      // Calculate new points based on center, length, and angle
+      // Apply rotation
+      const newAngle = originalAngle + (rotation * Math.PI) / 180;
+
+      // Calculate new points, keeping the center fixed
       const halfLength = newLength / 2;
       let newPoints = [
         centerX - halfLength * Math.cos(newAngle),
@@ -359,20 +360,10 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         centerY + halfLength * Math.sin(newAngle),
       ];
 
-      // Apply position offset (drag movement) - only if the arrow was actually moved
-      if (x !== 0 || y !== 0) {
-        newPoints = [
-          newPoints[0] + x,
-          newPoints[1] + y,
-          newPoints[2] + x,
-          newPoints[3] + y,
-        ];
-      }
+      // Constrain the arrow within the canvas boundaries
+      const constrainedPoints = constrainToBounds(newPoints, width, height);
 
-      // Constrain arrow to canvas bounds
-      newPoints = constrainToBounds(newPoints, width, height);
-
-      // Reset all node transformations to default
+      // Reset node transformations
       node.scaleX(1);
       node.scaleY(1);
       node.rotation(0);
@@ -385,7 +376,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
           a.id === id
             ? {
                 ...a,
-                points: newPoints,
+                points: constrainedPoints,
               }
             : a
         )
@@ -503,10 +494,6 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               "top-right",
               "bottom-left",
               "bottom-right",
-              "middle-left",
-              "middle-right",
-              "bottom-center",
-              "top-center",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}

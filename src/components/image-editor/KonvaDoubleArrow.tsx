@@ -303,36 +303,79 @@ const KonvaDoubleArrow = forwardRef<
     };
 
     const handleArrowClick = (id: string) => setSelectedId(id);
+    const constrainToBounds = (
+      points: number[],
+      canvasWidth: number,
+      canvasHeight: number
+    ) => {
+      const [x1, y1, x2, y2] = points;
+
+      // Constrain each point to the canvas bounds
+      const constrainedX1 = Math.max(0, Math.min(canvasWidth, x1));
+      const constrainedY1 = Math.max(0, Math.min(canvasHeight, y1));
+      const constrainedX2 = Math.max(0, Math.min(canvasWidth, x2));
+      const constrainedY2 = Math.max(0, Math.min(canvasHeight, y2));
+
+      return [constrainedX1, constrainedY1, constrainedX2, constrainedY2];
+    };
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Extract scale, rotation, and current node transformations
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
+      const rotation = node.rotation();
       const x = node.x();
       const y = node.y();
       const oldPoints = node.points();
 
-      // Scale points around the center
-      const cx = (oldPoints[0] + oldPoints[2]) / 2;
-      const cy = (oldPoints[1] + oldPoints[3]) / 2;
-      const newPoints = [
-        cx + (oldPoints[0] - cx) * scaleX + x,
-        cy + (oldPoints[1] - cy) * scaleY + y,
-        cx + (oldPoints[2] - cx) * scaleX + x,
-        cy + (oldPoints[3] - cy) * scaleY + y,
+      // Calculate the center of the arrow
+      const centerX = (oldPoints[0] + oldPoints[2]) / 2;
+      const centerY = (oldPoints[1] + oldPoints[3]) / 2;
+
+      // Calculate the original length and angle
+      const originalLength = Math.sqrt(
+        Math.pow(oldPoints[2] - oldPoints[0], 2) +
+          Math.pow(oldPoints[3] - oldPoints[1], 2)
+      );
+      const originalAngle = Math.atan2(
+        oldPoints[3] - oldPoints[1],
+        oldPoints[2] - oldPoints[0]
+      );
+
+      // Apply scaling to length
+      const newLength = originalLength * Math.max(scaleX, scaleY);
+
+      // Apply rotation
+      const newAngle = originalAngle + (rotation * Math.PI) / 180;
+
+      // Calculate new points, keeping the center fixed
+      const halfLength = newLength / 2;
+      let newPoints = [
+        centerX - halfLength * Math.cos(newAngle),
+        centerY - halfLength * Math.sin(newAngle),
+        centerX + halfLength * Math.cos(newAngle),
+        centerY + halfLength * Math.sin(newAngle),
       ];
 
+      // Constrain points to canvas boundaries
+      const constrainedPoints = constrainToBounds(newPoints, width, height);
+
+      // Reset node transformations
       node.scaleX(1);
       node.scaleY(1);
+      node.rotation(0);
       node.x(0);
       node.y(0);
 
+      // Update arrow state with constrained points
       setArrows((arrs) =>
         arrs.map((a) =>
           a.id === id
             ? {
                 ...a,
-                points: newPoints,
+                points: constrainedPoints,
               }
             : a
         )
@@ -344,18 +387,27 @@ const KonvaDoubleArrow = forwardRef<
       const x = node.x();
       const y = node.y();
       const oldPoints = node.points();
+
+      // Calculate the drag offsets
       const dx = x;
       const dy = y;
-      const newPoints = [
+
+      // Apply drag offsets to the arrow points
+      let newPoints = [
         oldPoints[0] + dx,
         oldPoints[1] + dy,
         oldPoints[2] + dx,
         oldPoints[3] + dy,
       ];
 
+      // Constrain points to canvas boundaries
+      newPoints = constrainToBounds(newPoints, width, height);
+
+      // Reset node position
       node.x(0);
       node.y(0);
 
+      // Update arrow state
       setArrows((arrs) =>
         arrs.map((a) =>
           a.id === id
@@ -451,10 +503,6 @@ const KonvaDoubleArrow = forwardRef<
               "top-right",
               "bottom-left",
               "bottom-right",
-              "middle-left",
-              "middle-right",
-              "bottom-center",
-              "top-center",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}
