@@ -306,8 +306,6 @@ const KonvaDoubleArrow = forwardRef<
       setNewArrow(null);
     };
 
-    const handleArrowClick = (id: string) => {
-      setSelectedId(id);
     const constrainToBounds = (
       points: number[],
       canvasWidth: number,
@@ -323,6 +321,10 @@ const KonvaDoubleArrow = forwardRef<
 
       return [constrainedX1, constrainedY1, constrainedX2, constrainedY2];
     };
+
+    const handleArrowClick = (id: string) => {
+      setSelectedId(id);
+
       if (onElementSelect) {
         onElementSelect(id, "double-arrow");
       }
