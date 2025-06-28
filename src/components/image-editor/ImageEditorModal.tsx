@@ -9,6 +9,8 @@ const KonvaRectangle = dynamic(() => import("./KonvaRectangle"), {
   ssr: false,
 });
 import type { KonvaRectangleHandle } from "./KonvaRectangle";
+const ArrowKonva = dynamic(() => import("./ArrowKonva"), { ssr: false });
+import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
 
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -153,7 +155,21 @@ export default function ImageEditorModal({
   const textEditorRef = useRef<TextEditorHandle>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("sans-serif");
 
+  // Add state and ref for arrows
+  const [arrows, setArrows] = useState<KonvaArrow[]>([]);
+  const konvaArrowRef = useRef<KonvaArrowHandle>(null);
+
+  const [imageDrawParams, setImageDrawParams] = useState<{
+    offsetX: number;
+    offsetY: number;
+    drawWidth: number;
+    drawHeight: number;
+    naturalWidth: number;
+    naturalHeight: number;
+  } | null>(null);
+
   const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -172,6 +188,76 @@ export default function ImageEditorModal({
     setRectangles([]);
     saveHistory();
   }, []);
+
+  const handleKonvaArrowFlatten = useCallback(
+    (arrowShapes: KonvaArrow[]) => {
+      if (!drawingCanvasRef.current || !imageDrawParams) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
+
+      const {
+        offsetX,
+        offsetY,
+        drawWidth,
+        drawHeight,
+        naturalWidth,
+        naturalHeight,
+      } = imageDrawParams;
+
+      // Calculate scale factors
+      const scaleX = drawWidth / naturalWidth;
+      const scaleY = drawHeight / naturalHeight;
+
+      arrowShapes.forEach((a: KonvaArrow) => {
+        // Map points from canvas to image coordinates
+        const [x1, y1, x2, y2] = a.points;
+        const imgX1 = (x1 - offsetX) / scaleX;
+        const imgY1 = (y1 - offsetY) / scaleY;
+        const imgX2 = (x2 - offsetX) / scaleX;
+        const imgY2 = (y2 - offsetY) / scaleY;
+
+        // Draw arrow in image coordinates, but transformed back to canvas
+        const drawX1 = offsetX + imgX1 * scaleX;
+        const drawY1 = offsetY + imgY1 * scaleY;
+        const drawX2 = offsetX + imgX2 * scaleX;
+        const drawY2 = offsetY + imgY2 * scaleY;
+
+        ctx.save();
+        ctx.strokeStyle = a.stroke;
+        ctx.lineWidth = a.strokeWidth ?? 1;
+        ctx.beginPath();
+        ctx.moveTo(drawX1, drawY1);
+        ctx.lineTo(drawX2, drawY2);
+        ctx.stroke();
+
+        // Draw arrowhead
+        const headlen = 15;
+        const angle = Math.atan2(drawY2 - drawY1, drawX2 - drawX1);
+        ctx.beginPath();
+        ctx.moveTo(drawX2, drawY2);
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle + Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle + Math.PI / 7)
+        );
+        ctx.lineTo(drawX2, drawY2);
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.stroke();
+        ctx.fillStyle = a.stroke;
+        ctx.fill();
+        ctx.restore();
+      });
+      setArrows([]);
+      saveHistory();
+    },
+    [imageDrawParams, setArrows, saveHistory]
+  );
 
   const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
     if (!drawingCanvasRef.current) return;
@@ -344,6 +430,16 @@ export default function ImageEditorModal({
       baseCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
       drawingCtx.globalCompositeOperation = "source-over";
+
+      setImageDrawParams({
+        offsetX,
+        offsetY,
+        drawWidth,
+        drawHeight,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+      });
+
       saveHistory();
     };
     img.onerror = () => {
@@ -379,7 +475,7 @@ export default function ImageEditorModal({
     return () => window.removeEventListener("resize", handleResize);
   }, [isOpen, drawImageOnCanvas]);
 
-  const saveHistory = () => {
+  function saveHistory() {
     const drawingCanvas = drawingCanvasRef.current;
     const ctx = drawingCanvas?.getContext("2d");
     if (!drawingCanvas || !ctx) return;
@@ -389,7 +485,7 @@ export default function ImageEditorModal({
     );
     setHistory(newHistory);
     setHistoryStep(newHistory.length - 1);
-  };
+  }
 
   const undo = useCallback(() => {
     if (historyStep > 0) {
@@ -483,6 +579,11 @@ export default function ImageEditorModal({
     // If leaving rectangle tool, flatten rectangles before switching
     if (activeTool === "rectangle" && konvaRectRef.current) {
       konvaRectRef.current.flatten();
+    }
+
+    // If leaving arrow tool, flatten arrows before switching
+    if (activeTool === "arrow" && konvaArrowRef.current) {
+      konvaArrowRef.current.flatten();
     }
 
     if (activeTool === "text" && textEditorRef.current) {
@@ -932,6 +1033,9 @@ export default function ImageEditorModal({
 
     if (konvaRectRef.current) {
       konvaRectRef.current.flatten();
+    }
+    if (konvaArrowRef.current) {
+      konvaArrowRef.current.flatten();
     }
     if (textEditorRef.current) {
       textEditorRef.current.flatten();
@@ -1545,6 +1649,35 @@ export default function ImageEditorModal({
                 />
               )}
 
+              {mounted && activeTool === "arrow" && (
+                <ArrowKonva
+                  ref={konvaArrowRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "arrow"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  arrows={arrows}
+                  setArrows={setArrows}
+                  onFlatten={handleKonvaArrowFlatten}
+                />
+              )}
+
+              {mounted && activeTool === "text" && (
+                <TextEditor
+                  ref={textEditorRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "text"}
+                  color={currentColor}
+                  fontSize={fontSize}
+                  fontFamily={fontFamily}
+                  texts={texts}
+                  setTexts={setTexts}
+                  onFlatten={handleTextFlatten}
+                />
+              )}
+
               {activeTool === "curve" && (
                 <CurveTool
                   active={activeTool === "curve"}
@@ -1564,21 +1697,6 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
-                />
-              )}
-
-              {mounted && activeTool === "text" && (
-                <TextEditor
-                  ref={textEditorRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
-                  active={activeTool === "text"}
-                  color={currentColor}
-                  fontSize={fontSize}
-                  fontFamily={fontFamily}
-                  texts={texts}
-                  setTexts={setTexts}
-                  onFlatten={handleTextFlatten}
                 />
               )}
 
