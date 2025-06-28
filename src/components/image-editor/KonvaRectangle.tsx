@@ -77,10 +77,20 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
     // Drawing logic
     const handleMouseDown = (e: any) => {
       if (!active) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       // Only draw if not clicking on an existing rect
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
+
+      // Get pointer position (works for both mouse and touch)
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       const id = `rect-${Date.now()}`;
       setNewRect({
         id,
@@ -98,7 +108,15 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     const handleMouseMove = (e: any) => {
       if (!active || !newRect) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       setNewRect({
         ...newRect,
         width: Math.abs(pos.x - newRect.x),
@@ -108,8 +126,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: any) => {
       if (!active || !newRect) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       setRectangles((rects) => [...rects, newRect]);
       setNewRect(null);
     };
@@ -162,9 +186,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           zIndex: 30,
           pointerEvents: active ? "auto" : "none",
         }}
+        // Mouse Event (Desktop)
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        // Touch Event (Mobile)
+        onTouchStart={handleMouseDown}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
       >
         <Layer>
           {rectangles.map((rect) => (
@@ -198,7 +227,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           )}
           <Transformer
             ref={trRef}
-            rotateEnabled={true}
+            rotateEnabled={false}
             enabledAnchors={[
               "top-left",
               "top-right",

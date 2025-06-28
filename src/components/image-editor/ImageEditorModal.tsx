@@ -183,16 +183,19 @@ export default function ImageEditorModal({
       ctx.strokeStyle = r.stroke;
       ctx.lineWidth = r.strokeWidth;
 
-      // Apply rotation transformation
-      const centerX = r.x + r.width / 2;
-      const centerY = r.y + r.height / 2;
+      if (r.rotation) {
+        // For rectangles with rotation
+        const centerX = r.x + r.width / 2;
+        const centerY = r.y + r.height / 2;
 
-      // Translate to center, rotate, then draw from center point
-      ctx.translate(centerX, centerY);
-      ctx.rotate(((r.rotation || 0) * Math.PI) / 180);
-
-      // Draw rectangle centered at origin (0,0) after transformation
-      ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
+        // Move to rectangle center, rotate, draw centered rectangle
+        ctx.translate(centerX, centerY);
+        ctx.rotate((r.rotation * Math.PI) / 180);
+        ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
+      } else {
+        // For rectangles without rotation - draw directly
+        ctx.strokeRect(r.x, r.y, r.width, r.height);
+      }
 
       ctx.restore(); // Restore original state
     });
@@ -271,35 +274,107 @@ export default function ImageEditorModal({
     [imageDrawParams, setArrows, saveHistory]
   );
 
+  // const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
+  //   if (!drawingCanvasRef.current) return;
+  //   const ctx = drawingCanvasRef.current.getContext("2d");
+  //   if (!ctx) return;
+
+  //   textShapes.forEach((t) => {
+  //     ctx.save();
+
+  //     // Create a temporary element to measure text dimensions
+  //     const textNode = document.createElement("span");
+  //     textNode.innerText = t.text;
+  //     textNode.style.fontSize = `${t.fontSize}px`;
+  //     textNode.style.fontFamily = t.fontFamily;
+  //     textNode.style.position = "absolute";
+  //     textNode.style.visibility = "hidden";
+  //     document.body.appendChild(textNode);
+
+  //     // Get dimensions with padding
+  //     const padding = 10;
+  //     const width = textNode.offsetWidth + padding * 2;
+  //     const height = textNode.offsetHeight + padding * 2;
+
+  //     document.body.removeChild(textNode);
+
+  //     // Draw background with rounded corners
+  //     if (t.backgroundColor && t.backgroundColor !== "transparent") {
+  //       ctx.fillStyle = t.backgroundColor;
+
+  //       // Draw rounded rectangle
+  //       const radius = 10; // Same as cornerRadius in the Rect component
+  //       const x = t.x;
+  //       const y = t.y;
+
+  //       ctx.beginPath();
+  //       ctx.moveTo(x + radius, y);
+  //       ctx.lineTo(x + width - radius, y);
+  //       ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  //       ctx.lineTo(x + width, y + height - radius);
+  //       ctx.quadraticCurveTo(
+  //         x + width,
+  //         y + height,
+  //         x + width - radius,
+  //         y + height
+  //       );
+  //       ctx.lineTo(x + radius, y + height);
+  //       ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  //       ctx.lineTo(x, y + radius);
+  //       ctx.quadraticCurveTo(x, y, x + radius, y);
+  //       ctx.closePath();
+  //       ctx.fill();
+  //     }
+
+  //     // Draw text on top of background
+  //     ctx.font = `${t.fontSize}px ${t.fontFamily}`;
+  //     ctx.fillStyle = t.fill;
+  //     ctx.fillText(t.text, t.x + padding, t.y + padding + t.fontSize); // Add padding to position text
+
+  //     ctx.restore();
+  //   });
+
+  //   setTexts([]);
+  //   saveHistory();
+  // }, []);
+
   const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
     if (!drawingCanvasRef.current) return;
     const ctx = drawingCanvasRef.current.getContext("2d");
     if (!ctx) return;
+
     textShapes.forEach((t) => {
       ctx.save();
 
-      // Create a temporary element to measure text dimensions
+      // Apply scaling transformations
+      const scaleX = t.scaleX || 1;
+      const scaleY = t.scaleY || 1;
+
+      // Calculate scaled font size and padding
+      const scaledFontSize = t.fontSize * scaleY;
+      const padding = 10 * Math.min(scaleX, scaleY); // Use minimum scale for consistent padding
+
+      // Create a temporary element to measure text dimensions with scaled font
       const textNode = document.createElement("span");
       textNode.innerText = t.text;
-      textNode.style.fontSize = `${t.fontSize}px`;
+      textNode.style.fontSize = `${scaledFontSize}px`;
       textNode.style.fontFamily = t.fontFamily;
       textNode.style.position = "absolute";
       textNode.style.visibility = "hidden";
       document.body.appendChild(textNode);
 
-      // Get dimensions with padding
-      const padding = 10;
-      const width = textNode.offsetWidth + padding * 2;
-      const height = textNode.offsetHeight + padding * 2;
+      // Get dimensions with scaled padding
+      const width = (textNode.offsetWidth + padding * 2) * scaleX;
+      const height = (textNode.offsetHeight + padding * 2) * scaleY;
 
       document.body.removeChild(textNode);
 
-      // Draw background with rounded corners
+      // Draw background with rounded corners if specified
       if (t.backgroundColor && t.backgroundColor !== "transparent") {
         ctx.fillStyle = t.backgroundColor;
 
-        // Draw rounded rectangle
-        const radius = 10; // Same as cornerRadius in the Rect component
+        // Draw rounded rectangle with scaling
+        const radius = 10 * Math.min(scaleX, scaleY); // Scale the radius
         const x = t.x;
         const y = t.y;
 
@@ -322,10 +397,15 @@ export default function ImageEditorModal({
         ctx.fill();
       }
 
-      // Draw text on top of background
-      ctx.font = `${t.fontSize}px ${t.fontFamily}`;
+      // Draw text on top of background with scaling
+      ctx.font = `${scaledFontSize}px ${t.fontFamily}`;
       ctx.fillStyle = t.fill;
-      ctx.fillText(t.text, t.x + padding, t.y + padding + t.fontSize); // Add padding to position text
+
+      // Position text with scaled padding and baseline adjustment
+      const textX = t.x + padding;
+      const textY = t.y + padding + scaledFontSize;
+
+      ctx.fillText(t.text, textX, textY);
 
       ctx.restore();
     });

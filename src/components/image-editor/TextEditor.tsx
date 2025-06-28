@@ -1,4 +1,5 @@
 "use client";
+import { set } from "date-fns";
 import React, {
   useRef,
   useState,
@@ -18,6 +19,8 @@ export interface KonvaTextShape {
   fill: string;
   backgroundColor: string;
   draggable: boolean;
+  scaleX?: number;
+  scaleY?: number;
 }
 
 interface TextEditorProps {
@@ -65,6 +68,14 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
 
     const stageRef = useRef<any>(null);
     const trRef = useRef<any>(null);
+
+    // Add state for tracking pinch gesture
+    const [lastDist, setLastDist] = useState<number>(0);
+
+    // Helper function to get distance between two touches
+    const getDistance = (p1: any, p2: any) => {
+      return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    };
 
     useImperativeHandle(ref, () => ({
       flatten: () => {
@@ -119,6 +130,44 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       });
     };
 
+    // Touch handlers for pinch zoom
+    const handleTouchMove = (e: any) => {
+      if (!active || !selectedId) return;
+
+      const touch1 = e.evt.touches[0];
+      const touch2 = e.evt.touches[1];
+
+      if (touch1 && touch2) {
+        e.evt.preventDefault();
+
+        const dist = getDistance(
+          { x: touch1.clientX, y: touch1.clientY },
+          { x: touch2.clientX, y: touch2.clientY }
+        );
+
+        if (lastDist > 0) {
+          const scale = dist / lastDist;
+
+          setTexts((arr) =>
+            arr.map((t) =>
+              t.id === selectedId
+                ? {
+                    ...t,
+                    scaleX: (t.scaleX || 1) * scale,
+                    scaleY: (t.scaleY || 1) * scale,
+                  }
+                : t
+            )
+          );
+        }
+        setLastDist(dist);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setLastDist(0);
+    };
+
     // Double-click on empty canvas to add new text
     const handleStageDblClick = (e: any) => {
       if (!active) return;
@@ -149,9 +198,6 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
             minWidth: 50,
             minHeight: 24,
             background: backgroundColor,
-            // background: "transparent",
-            // outline: "none",
-            // border: "none",
             color: color,
             border: "1px solid #ccc",
             padding: 2,
@@ -225,6 +271,14 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
             pointerEvents: active ? "auto" : "none",
           }}
           onDblClick={handleStageDblClick}
+          onTouchMove={handleTouchMove} // Add pinch zoom
+          onTouchEnd={handleTouchEnd}
+          onClick={(e) => {
+            // Clear selection when clicking on empty space
+            if (e.target === e.target.getStage()) {
+              setSelectedId(null);
+            }
+          }}
         >
           <Layer>
             {texts.map((t) => {
@@ -250,6 +304,8 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                   id={t.id}
                   x={t.x}
                   y={t.y}
+                  scaleX={t.scaleX || 1}
+                  scaleY={t.scaleY || 1}
                   draggable={t.draggable}
                   onClick={() => setSelectedId(t.id)}
                   onTap={() => setSelectedId(t.id)}
