@@ -29,6 +29,8 @@ interface KonvaCircleProps {
   circles: KonvaCircleShape[];
   setCircles: React.Dispatch<React.SetStateAction<KonvaCircleShape[]>>;
   onFlatten: (circles: KonvaCircleShape[]) => void;
+  onElementSelect?: (elementId: string, elementType: string) => void;
+  onElementDeselect?: () => void;
 }
 
 export interface KonvaCircleHandle {
@@ -47,6 +49,8 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       circles,
       setCircles,
       onFlatten,
+      onElementSelect,
+      onElementDeselect,
     },
     ref
   ) => {
@@ -136,7 +140,12 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       setNewCircle(null);
     };
 
-    const handleCircleClick = (id: string) => setSelectedId(id);
+    const handleCircleClick = (id: string) => {
+      setSelectedId(id);
+      if (onElementSelect) {
+        onElementSelect(id, "circle");
+      }
+    };
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
@@ -158,17 +167,39 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     };
 
     const handleDragEnd = (e: any, id: string) => {
+      const stage = e.target.getStage();
       const node = e.target;
-      setCircles((cs) =>
-        cs.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                x: node.x(),
-                y: node.y(),
-              }
-            : c
-        )
+      const { x, y } = node.position();
+
+      // Get screen coordinates
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check if dropped on trash zone
+      const trashZone = document.getElementById("trash-zone");
+      if (trashZone) {
+        const trashRect = trashZone.getBoundingClientRect();
+        const tolerance = 50;
+
+        if (
+          screenX + 25 >= trashRect.left - tolerance &&
+          screenX - 25 <= trashRect.right + tolerance &&
+          screenY + 25 >= trashRect.top - tolerance &&
+          screenY - 25 <= trashRect.bottom + tolerance
+        ) {
+          // Delete the circle
+          setCircles((circles) => circles.filter((c) => c.id !== id));
+          setSelectedId(null);
+          if (onElementDeselect) onElementDeselect();
+          return;
+        }
+      }
+
+      // Normal drag behavior
+      setCircles((circles) =>
+        circles.map((c) => (c.id === id ? { ...c, x, y } : c))
       );
     };
 
@@ -237,14 +268,20 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         onTouchEnd={handleMouseUp}
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty && selectedId) {
-            setSelectedId(null); // Deselect when clicking empty space
+          if (clickedOnEmpty) {
+            setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
           }
         }}
         onTap={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty && selectedId) {
-            setSelectedId(null); // Deselect when tapping empty space
+          if (clickedOnEmpty) {
+            setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
           }
         }}
       >

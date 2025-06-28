@@ -31,6 +31,8 @@ interface KonvaRectangleProps {
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
+  onElementSelect?: (elementId: string, elementType: string) => void;
+  onElementDeselect?: () => void;
 }
 
 export interface KonvaRectangleHandle {
@@ -39,7 +41,17 @@ export interface KonvaRectangleHandle {
 
 const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
   (
-    { width, height, active, color, brushSize, backgroundColor, onFlatten },
+    {
+      width,
+      height,
+      active,
+      color,
+      brushSize,
+      backgroundColor,
+      onFlatten,
+      onElementSelect,
+      onElementDeselect,
+    },
     ref
   ) => {
     const [rectangles, setRectangles] = useState<KonvaRectangle[]>([]);
@@ -163,10 +175,47 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     const handleRectClick = (id: string) => {
       setSelectedId(id);
+      // Notify parent about selection
+      if (onElementSelect) {
+        onElementSelect(id, "rectangle");
+      }
     };
 
     const handleDragEnd = (e: any, id: string) => {
-      const { x, y } = e.target.position();
+      const stage = e.target.getStage();
+      const node = e.target;
+      const { x, y } = node.position();
+
+      // Get the stage's position on screen
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+
+      // Convert stage coordinates to screen coordinates
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check if dropped on trash zone
+      const trashZone = document.getElementById("trash-zone");
+      if (trashZone) {
+        const trashRect = trashZone.getBoundingClientRect();
+
+        // Check if the rectangle overlaps with trash zone (with some tolerance)
+        const tolerance = 50;
+        if (
+          screenX + 50 >= trashRect.left - tolerance && // rectangle right edge
+          screenX - 50 <= trashRect.right + tolerance && // rectangle left edge
+          screenY + 50 >= trashRect.top - tolerance && // rectangle bottom edge
+          screenY - 50 <= trashRect.bottom + tolerance // rectangle top edge
+        ) {
+          // Delete the rectangle
+          setRectangles((rects) => rects.filter((r) => r.id !== id));
+          setSelectedId(null);
+          if (onElementDeselect) onElementDeselect();
+          return;
+        }
+      }
+
+      // Normal drag behavior - update position
       setRectangles((rects) =>
         rects.map((r) => (r.id === id ? { ...r, x, y } : r))
       );
@@ -217,6 +266,24 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         onTouchStart={handleMouseDown}
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
+        onClick={(e) => {
+          const clickedOnEmpty = e.target === e.target.getStage();
+          if (clickedOnEmpty) {
+            setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
+          }
+        }}
+        onTap={(e) => {
+          const clickedOnEmpty = e.target === e.target.getStage();
+          if (clickedOnEmpty) {
+            setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
+          }
+        }}
       >
         <Layer>
           {rectangles.map((rect) => (

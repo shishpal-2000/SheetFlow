@@ -27,6 +27,8 @@ interface KonvaArrowProps {
   arrows: KonvaArrow[];
   setArrows: React.Dispatch<React.SetStateAction<KonvaArrow[]>>;
   onFlatten: (arrows: KonvaArrow[]) => void;
+  onElementSelect?: (elementId: string, elementType: string) => void;
+  onElementDeselect?: () => void;
 }
 
 export interface KonvaArrowHandle {
@@ -45,6 +47,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       arrows,
       setArrows,
       onFlatten,
+      onElementSelect,
+      onElementDeselect,
     },
     ref
   ) => {
@@ -317,7 +321,12 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       }
     };
 
-    const handleArrowClick = (id: string) => setSelectedId(id);
+    const handleArrowClick = (id: string) => {
+      setSelectedId(id);
+      if (onElementSelect) {
+        onElementSelect(id, "arrow");
+      }
+    };
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
@@ -385,9 +394,45 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
 
     const handleDragEnd = (e: any, id: string) => {
       const node = e.target;
+      const stage = e.target.getStage();
       const x = node.x();
       const y = node.y();
+
+      // Get the stage's position on screen
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+
+      // Get arrow center point for trash detection
       const oldPoints = node.points();
+      const centerX = (oldPoints[0] + oldPoints[2]) / 2;
+      const centerY = (oldPoints[1] + oldPoints[3]) / 2;
+
+      // Convert stage coordinates to screen coordinates
+      const screenX = stageRect.left + centerX + x;
+      const screenY = stageRect.top + centerY + y;
+
+      // Check if dropped on trash zone
+      const trashZone = document.getElementById("trash-zone");
+      if (trashZone) {
+        const trashRect = trashZone.getBoundingClientRect();
+
+        // Check if the arrow center overlaps with trash zone (with tolerance)
+        const tolerance = 50;
+        if (
+          screenX >= trashRect.left - tolerance &&
+          screenX <= trashRect.right + tolerance &&
+          screenY >= trashRect.top - tolerance &&
+          screenY <= trashRect.bottom + tolerance
+        ) {
+          // Delete the arrow
+          setArrows((arrs) => arrs.filter((a) => a.id !== id));
+          setSelectedId(null);
+          if (onElementDeselect) onElementDeselect();
+          return;
+        }
+      }
+
+      // Normal drag behavior - update arrow position
       const dx = x;
       const dy = y;
       let newPoints = [
@@ -436,17 +481,22 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         onTouchStart={handleStageClick}
         onTouchMove={handleTouchMove} // Use the new touch handler
         onTouchEnd={handleTouchEnd} // Use the new touch end handler
-        // Click/Tap events for selection
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty && selectedId) {
+          if (clickedOnEmpty) {
             setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
           }
         }}
         onTap={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty && selectedId) {
+          if (clickedOnEmpty) {
             setSelectedId(null);
+            if (onElementDeselect) {
+              onElementDeselect();
+            }
           }
         }}
       >

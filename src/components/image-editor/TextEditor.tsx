@@ -34,6 +34,8 @@ interface TextEditorProps {
   texts: KonvaTextShape[];
   setTexts: React.Dispatch<React.SetStateAction<KonvaTextShape[]>>;
   onFlatten: (texts: KonvaTextShape[]) => void;
+  onElementSelect?: (elementId: string, elementType: string) => void;
+  onElementDeselect?: () => void;
 }
 
 export interface TextEditorHandle {
@@ -53,6 +55,8 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       texts,
       setTexts,
       onFlatten,
+      onElementSelect,
+      onElementDeselect,
     },
     ref
   ) => {
@@ -91,6 +95,9 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
         if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
           setTexts((arr) => arr.filter((t) => t.id !== selectedId));
           setSelectedId(null);
+          if (onElementDeselect) {
+            onElementDeselect();
+          }
         }
       };
       window.addEventListener("keydown", handleKeyDown);
@@ -110,7 +117,40 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
 
     // Drag handler
     const handleDragEnd = (e: any, id: string) => {
-      const { x, y } = e.target.position();
+      const group = e.target;
+      const stage = e.target.getStage();
+      const { x, y } = group.position();
+
+      // Get the stage's position on screen
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+
+      // Convert stage coordinates to screen coordinates
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check if dropped on trash zone
+      const trashZone = document.getElementById("trash-zone");
+      if (trashZone) {
+        const trashRect = trashZone.getBoundingClientRect();
+
+        // Check if the text overlaps with trash zone (with tolerance)
+        const tolerance = 50;
+        if (
+          screenX + 50 >= trashRect.left - tolerance &&
+          screenX - 50 <= trashRect.right + tolerance &&
+          screenY + 25 >= trashRect.top - tolerance &&
+          screenY - 25 <= trashRect.bottom + tolerance
+        ) {
+          // Delete the text
+          setTexts((arr) => arr.filter((t) => t.id !== id));
+          setSelectedId(null);
+          if (onElementDeselect) onElementDeselect();
+          return;
+        }
+      }
+
+      // Normal drag behavior - update text position
       setTexts((arr) => arr.map((t) => (t.id === id ? { ...t, x, y } : t)));
     };
 
@@ -274,9 +314,21 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
           onTouchMove={handleTouchMove} // Add pinch zoom
           onTouchEnd={handleTouchEnd}
           onClick={(e) => {
-            // Clear selection when clicking on empty space
-            if (e.target === e.target.getStage()) {
+            const clickedOnEmpty = e.target === e.target.getStage();
+            if (clickedOnEmpty) {
               setSelectedId(null);
+              if (onElementDeselect) {
+                onElementDeselect();
+              }
+            }
+          }}
+          onTap={(e) => {
+            const clickedOnEmpty = e.target === e.target.getStage();
+            if (clickedOnEmpty) {
+              setSelectedId(null);
+              if (onElementDeselect) {
+                onElementDeselect();
+              }
             }
           }}
         >
@@ -307,8 +359,18 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                   scaleX={t.scaleX || 1}
                   scaleY={t.scaleY || 1}
                   draggable={t.draggable}
-                  onClick={() => setSelectedId(t.id)}
-                  onTap={() => setSelectedId(t.id)}
+                  onClick={() => {
+                    setSelectedId(t.id);
+                    if (onElementSelect) {
+                      onElementSelect(t.id, "text");
+                    }
+                  }}
+                  onTap={() => {
+                    setSelectedId(t.id);
+                    if (onElementSelect) {
+                      onElementSelect(t.id, "text");
+                    }
+                  }}
                   onDblClick={(e) => handleDblClick(e, t.id)}
                   onDragEnd={(e) => handleDragEnd(e, t.id)}
                 >
