@@ -67,6 +67,17 @@ const KonvaDoubleArrow = forwardRef<
       }
     }, [selectedId, arrows]);
 
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+          setArrows((arrows) => arrows.filter((a) => a.id !== selectedId));
+          setSelectedId(null);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedId]);
+
     // Double click to start drawing
     const handleStageDblClick = (e: any) => {
       if (!active) return;

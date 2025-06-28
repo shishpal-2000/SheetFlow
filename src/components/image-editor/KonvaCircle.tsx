@@ -125,6 +125,17 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     };
 
     useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+          setCircles((cs) => cs.filter((c) => c.id !== selectedId));
+          setSelectedId(null);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedId]);
+
+    useEffect(() => {
       if (trRef.current && selectedId && stageRef.current) {
         const node = stageRef.current.findOne(`#${selectedId}`);
         if (node) {
@@ -145,7 +156,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         style={{
           position: "absolute",
           inset: 0,
-          
+
           width: "100%",
           height: "100%",
           zIndex: 30,
