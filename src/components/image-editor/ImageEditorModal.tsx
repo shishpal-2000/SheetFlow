@@ -53,6 +53,7 @@ import {
 } from "lucide-react";
 import { CurveTool } from "./CurveTool";
 import CurveArrowTool from "./CurveArrowTool";
+import MobileView from "./MobileView";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -70,13 +71,6 @@ interface CropArea {
 
 export type StrokeStyle = "solid" | "dashed" | "dotted" | "double";
 type FontFamily = "sans-serif" | "serif" | "monospace" | "cursive" | "fantasy";
-
-interface TextStyle {
-  fontSize: number;
-  fontFamily: FontFamily;
-  color: string;
-  backgroundColor: string | null;
-}
 
 export interface Point {
   x: number;
@@ -96,26 +90,6 @@ export type DrawingTool =
   | "curve"
   | "curve-arrow";
 
-const availableColors = [
-  { name: "Black", value: "#000000" },
-  { name: "Red", value: "#FF0000" },
-  { name: "Blue", value: "#0000FF" },
-  { name: "Green", value: "#008000" },
-  { name: "Yellow", value: "#FFFF00" },
-  { name: "White", value: "#FFFFFF" },
-  { name: "Transparent", value: "transparent" },
-];
-
-const availableBackgroundColors = [
-  { name: "Light Gray", value: "#F5F5F5" },
-  { name: "Mint Cream", value: "#F5FFFA" },
-  { name: "Lavender", value: "#E6E6FA" },
-  { name: "Alice Blue", value: "#F0F8FF" },
-  { name: "Seashell", value: "#FFF5EE" },
-  { name: "White", value: "#FFFFFF" },
-  { name: "Transparent", value: "transparent" },
-];
-
 const minBrushSize = 1;
 const maxBrushSize = 20;
 
@@ -128,9 +102,6 @@ export default function ImageEditorModal({
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawingCanvasRef = useRef<HTMLCanvasElement>(null);
   const [activeTool, setActiveTool] = useState<DrawingTool | null>(null);
-  const [currentColor, setCurrentColor] = useState<string>("#000000");
-  const [brushSize, setBrushSize] = useState<number>(3);
-  const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [history, setHistory] = useState<ImageData[]>([]);
@@ -152,6 +123,17 @@ export default function ImageEditorModal({
   const [texts, setTexts] = useState<KonvaTextShape[]>([]);
   const textEditorRef = useRef<TextEditorHandle>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("sans-serif");
+
+  // Crop-related state
+  const [cropArea, setCropArea] = useState<CropArea | null>(null);
+  const [isCropping, setIsCropping] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<Point | null>(null);
+
+  // Style-related state
+  const [backgroundColor, setBackgroundColor] = useState<string>("transparent");
+  const [currentColor, setCurrentColor] = useState<string>("#000000");
+  const [brushSize, setBrushSize] = useState<number>(3);
+  const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -177,105 +159,65 @@ export default function ImageEditorModal({
     if (!drawingCanvasRef.current) return;
     const ctx = drawingCanvasRef.current.getContext("2d");
     if (!ctx) return;
+
     textShapes.forEach((t) => {
       ctx.save();
+
+      // Create a temporary element to measure text dimensions
+      const textNode = document.createElement("span");
+      textNode.innerText = t.text;
+      textNode.style.fontSize = `${t.fontSize}px`;
+      textNode.style.fontFamily = t.fontFamily;
+      textNode.style.position = "absolute";
+      textNode.style.visibility = "hidden";
+      document.body.appendChild(textNode);
+
+      // Get dimensions with padding
+      const padding = 10;
+      const width = textNode.offsetWidth + padding * 2;
+      const height = textNode.offsetHeight + padding * 2;
+
+      document.body.removeChild(textNode);
+
+      // Draw background with rounded corners
+      if (t.backgroundColor && t.backgroundColor !== "transparent") {
+        ctx.fillStyle = t.backgroundColor;
+
+        // Draw rounded rectangle
+        const radius = 10; // Same as cornerRadius in the Rect component
+        const x = t.x;
+        const y = t.y;
+
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(
+          x + width,
+          y + height,
+          x + width - radius,
+          y + height
+        );
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Draw text on top of background
       ctx.font = `${t.fontSize}px ${t.fontFamily}`;
       ctx.fillStyle = t.fill;
-      ctx.fillText(t.text, t.x, t.y + t.fontSize); // y + fontSize for baseline
+      ctx.fillText(t.text, t.x + padding, t.y + padding + t.fontSize); // Add padding to position text
+
       ctx.restore();
     });
+
     setTexts([]);
     saveHistory();
   }, []);
-
-  // Crop-related state
-  const [cropArea, setCropArea] = useState<CropArea | null>(null);
-  const [isCropping, setIsCropping] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<Point | null>(null);
-
-  // Text styling state
-  const [textStyle, setTextStyle] = useState<TextStyle>({
-    fontSize: fontSize,
-    fontFamily: "sans-serif",
-    color: currentColor,
-    backgroundColor: null,
-  });
-
-  // drag and drop
-
-  // ...inside your component, after other useState hooks...
-  const [placedTexts, setPlacedTexts] = useState<
-    Array<{
-      id: string;
-      text: string;
-      position: Point;
-      style: TextStyle;
-      draggable: boolean;
-    }>
-  >([]);
-
-  const dragLabelId = useRef<string | null>(null);
-  const touchOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const handleLabelDragStart = (id: string) => {
-    dragLabelId.current = id;
-  };
-
-  const handleLabelDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-  };
-
-  const handleLabelDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    if (!dragLabelId.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setPlacedTexts((prev) =>
-      prev.map((label) =>
-        label.id === dragLabelId.current
-          ? { ...label, position: { x, y } }
-          : label
-      )
-    );
-    dragLabelId.current = null;
-  };
-
-  const handleTouchStart = (
-    e: React.TouchEvent<HTMLDivElement>,
-    label: (typeof placedTexts)[number]
-  ) => {
-    dragLabelId.current = label.id;
-    const touch = e.touches[0];
-    const rect = e.currentTarget.getBoundingClientRect();
-    touchOffset.current = {
-      x: touch.clientX - rect.left,
-      y: touch.clientY - rect.top,
-    };
-  };
-
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!dragLabelId.current) return;
-
-    const touch = e.touches[0];
-    const container = document.getElementById("drawing-canvas");
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-    const x = touch.clientX - rect.left - touchOffset.current.x;
-    const y = touch.clientY - rect.top - touchOffset.current.y;
-
-    setPlacedTexts((prev) =>
-      prev.map((label) =>
-        label.id === dragLabelId.current
-          ? { ...label, position: { x, y } }
-          : label
-      )
-    );
-  };
-
-  const handleTouchEnd = () => {
-    dragLabelId.current = null;
-  };
 
   const { toast } = useToast();
 
@@ -306,8 +248,8 @@ export default function ImageEditorModal({
         canvasHeight = containerRect.height;
       } else {
         // On desktop, use fixed dimensions
-        canvasWidth = 800;
-        canvasHeight = 600;
+        canvasWidth = 420;
+        canvasHeight = 750;
       }
 
       // Set canvas dimensions
@@ -555,61 +497,6 @@ export default function ImageEditorModal({
       x: (clientX - rect.left) * (canvas.width / rect.width),
       y: (clientY - rect.top) * (canvas.height / rect.height),
     };
-  };
-
-  function drawRoundedRect(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: number
-  ): void {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.lineTo(x + width - radius, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    ctx.lineTo(x + width, y + height - radius);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    ctx.lineTo(x + radius, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    ctx.lineTo(x, y + radius);
-    ctx.quadraticCurveTo(x, y, x + radius, y);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  const drawText = (
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    text: string,
-    style: TextStyle
-  ) => {
-    ctx.font = `${style.fontSize}px ${style.fontFamily}`;
-
-    // If background color is set and not transparent, draw it first
-    if (style.backgroundColor && style.backgroundColor !== "transparent") {
-      const paddingX = 10;
-      const paddingY = 10;
-      const borderRadius = 8;
-
-      const metrics = ctx.measureText(text);
-      const textHeight =
-        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-
-      const rectX = x - paddingX;
-      const rectY = y - metrics.actualBoundingBoxAscent - paddingY;
-      const rectWidth = metrics.width + 2 * paddingX;
-      const rectHeight = textHeight + 2 * paddingY;
-
-      ctx.fillStyle = style.backgroundColor;
-      drawRoundedRect(ctx, rectX, rectY, rectWidth, rectHeight, borderRadius);
-    }
-
-    // Draw the text
-    ctx.fillStyle = style.color;
-    ctx.fillText(text, x, y);
   };
 
   const drawArrow = (
@@ -951,132 +838,9 @@ export default function ImageEditorModal({
     tempCtx.drawImage(baseCanvas, 0, 0);
     tempCtx.drawImage(drawingCanvas, 0, 0);
 
-    // Draw all placed texts
-    placedTexts.forEach((label) => {
-      drawText(
-        tempCtx,
-        label.position.x,
-        label.position.y,
-        label.text,
-        label.style
-      );
-    });
-
     // Get the combined result
     const dataUrl = tempCanvas.toDataURL("image/png");
     onSave(dataUrl);
-  };
-
-  // console.log(isTextToolActive);
-
-  const FloatingTextInput = ({
-    position,
-    onSubmit,
-  }: {
-    position: { x: number; y: number };
-    onSubmit: (text: string) => void;
-  }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const [inputText, setInputText] = useState("");
-
-    useEffect(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, []);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && inputText.trim()) {
-        onSubmit(inputText);
-        setInputText("");
-        setTextInputPosition(null);
-        setActiveTool(null);
-        setIsTextToolActive(false);
-      } else if (e.key === "Escape") {
-        setInputText("");
-        setTextInputPosition(null);
-      }
-    };
-
-    // Only submit on blur if the input is not empty
-    const handleBlur = (e: React.FocusEvent) => {
-      // Check if the related target (where focus is going) is part of the text input container
-      const isClickInsideComponent = e.currentTarget.contains(
-        e.relatedTarget as Node
-      );
-
-      if (!isClickInsideComponent) {
-        if (inputText.trim()) {
-          onSubmit(inputText);
-          setInputText("");
-          setTextInputPosition(null);
-        }
-      }
-    };
-
-    return (
-      <div
-        className="flex flex-col gap-2 p-2 bg-background/95 border rounded-lg shadow-lg"
-        style={{
-          position: "absolute",
-          left: position.x,
-          top: position.y - textStyle.fontSize / 2,
-          zIndex: 10,
-          minWidth: "200px",
-        }}
-        onMouseDown={(e) => e.stopPropagation()} // Prevent canvas events from interfering
-        tabIndex={-1} // Make the container focusable
-      >
-        {/* <input
-          ref={inputRef}
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          style={{
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            borderBottom: "1px solid " + textStyle.color,
-            color: textStyle.color,
-            fontSize: `${textStyle.fontSize}px`,
-            fontFamily: textStyle.fontFamily,
-            width: "100%",
-          }}
-          placeholder="Type and press Enter..."
-        /> */}
-        <div className="grid grid-cols-2 gap-2">
-          <Select
-            value={textStyle.backgroundColor || "transparent"}
-            onValueChange={(value) =>
-              setTextStyle((prev) => ({
-                ...prev,
-                backgroundColor: value === "transparent" ? null : value,
-                // color: value === "transparent" ? "black" : value,
-              }))
-            }
-          >
-            <SelectTrigger className="h-8">
-              <SelectValue placeholder="Background" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableBackgroundColors.map((color) => (
-                <SelectItem key={color.value} value={color.value}>
-                  <div className="flex items-center">
-                    <div
-                      style={{ backgroundColor: color.value }}
-                      className="w-4 h-4 rounded-full mr-2 border"
-                    />
-                    {color.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    );
   };
 
   const drawCropOverlay = useCallback(() => {
@@ -1263,7 +1027,7 @@ export default function ImageEditorModal({
         <div className="flex flex-col lg:flex-row flex-grow overflow-hidden">
           {/* --- Large Screen Controls (Left Panel) --- */}
           {/* This section is visible only on screens larger than 'lg'. */}
-          <div className="hidden lg:flex flex-col lg:w-52 lg:flex-shrink-0 lg:border-r p-2 gap-2">
+          <div className="hidden lg:flex flex-col lg:w-52 lg:flex-shrink-0 lg:border-r p-2 gap-2 overflow-y-auto">
             {/* Large Screen Tools Grid */}
 
             {/* Undo/Redo Buttons for large screens */}
@@ -1425,490 +1189,15 @@ export default function ImageEditorModal({
               </Button>
             </div>
 
-            {/* Color dropdown for large screens */}
-            <div className="mt-4">
-              <Label
-                htmlFor="color-picker-lg"
-                className="flex items-center gap-2 mb-2"
-              >
-                <Palette className="h-4 w-4" /> Color
-              </Label>
-              <Select
-                value={currentColor || textStyle.color}
-                onValueChange={(value) => {
-                  setCurrentColor(value);
-                  setTextStyle((prev) => ({
-                    ...prev,
-                    color: value === "transparent" ? "black" : value,
-                  }));
-                }}
-              >
-                <SelectTrigger id="color-picker-lg">
-                  <SelectValue placeholder="Select color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableColors.map((color) => (
-                    <SelectItem key={color.value} value={color.value}>
-                      <div className="flex items-center">
-                        <div
-                          style={{ backgroundColor: color.value }}
-                          className="w-4 h-4 rounded-full mr-2 border"
-                        />
-                        {color.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Brush size for large screens */}
-            <div className="mt-4">
-              <Label htmlFor="brush-size-lg" className="mb-2 block">
-                Brush Size: {brushSize}px
-              </Label>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setBrushSize((s) => Math.max(minBrushSize, s - 1))
-                  }
-                  className="h-8 w-8"
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <Slider
-                  id="brush-size-lg"
-                  min={minBrushSize}
-                  max={maxBrushSize}
-                  step={1}
-                  value={[brushSize]}
-                  onValueChange={(value) => setBrushSize(value[0])}
-                  className="flex-grow"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() =>
-                    setBrushSize((s) => Math.min(maxBrushSize, s + 1))
-                  }
-                  className="h-8 w-8"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative">
-            <div
-              className="relative border-2 border-gray-300 w-full h-full lg:w-[800px] lg:h-[600px]"
-              onDragOver={handleLabelDragOver}
-              onDrop={handleLabelDrop}
-              id="drawing-canvas"
-            >
-              <canvas
-                ref={baseCanvasRef}
-                className="absolute inset-0 bg-white object-contain w-full h-full"
-              />
-              <canvas
-                ref={drawingCanvasRef}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                className="absolute inset-0 w-full h-full"
-                style={{
-                  cursor:
-                    activeTool === "text"
-                      ? "text"
-                      : activeTool === null
-                      ? "default"
-                      : "crosshair",
-                }}
-              />
-              {mounted && activeTool === "rectangle" && (
-                <KonvaRectangle
-                  ref={konvaRectRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
-                  active={activeTool === "rectangle"}
-                  color={currentColor}
-                  brushSize={brushSize}
-                  rectangles={rectangles}
-                  setRectangles={setRectangles}
-                  onFlatten={handleKonvaRectFlatten}
-                />
-              )}
-
-              {activeTool === "curve" && (
-                <CurveTool
-                  active={activeTool === "curve"}
-                  canvasRef={drawingCanvasRef}
-                  currentColor={currentColor}
-                  setActiveTool={setActiveTool}
-                  strokeStyle={strokeStyle}
-                  brushSize={brushSize}
-                />
-              )}
-
-              {activeTool === "curve-arrow" && (
-                <CurveArrowTool
-                  active={activeTool === "curve-arrow"}
-                  canvasRef={drawingCanvasRef}
-                  currentColor={currentColor}
-                  setActiveTool={setActiveTool}
-                  strokeStyle={strokeStyle}
-                  brushSize={brushSize}
-                />
-              )}
-
-              {mounted && activeTool === "text" && (
-                <TextEditor
-                  ref={textEditorRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
-                  active={activeTool === "text"}
-                  color={currentColor}
-                  fontSize={fontSize}
-                  fontFamily={fontFamily}
-                  texts={texts}
-                  setTexts={setTexts}
-                  onFlatten={handleTextFlatten}
-                />
-              )}
-
-              {placedTexts.map((label) => (
-                <div
-                  key={label.id}
-                  style={{
-                    position: "absolute",
-                    left: label.position.x,
-                    top: label.position.y - label.style.fontSize / 2,
-                    zIndex: 20,
-                    fontSize: label.style.fontSize,
-                    fontFamily: label.style.fontFamily,
-                    color: label.style.color,
-                    background: label.style.backgroundColor || "transparent",
-                    padding: "2px 8px",
-                    borderRadius: 6,
-                    userSelect: "none",
-                    border: label.draggable ? "1px dashed #888" : "none",
-                    cursor: label.draggable ? "move" : "default",
-                    boxShadow: label.draggable
-                      ? "0 2px 8px rgba(0,0,0,0.08)"
-                      : undefined,
-                    transition: "box-shadow 0.2s",
-                  }}
-                  draggable={label.draggable}
-                  onDragStart={() => handleLabelDragStart(label.id)}
-                  onTouchStart={(e) => handleTouchStart(e, label)}
-                  onTouchMove={(e) => handleTouchMove(e)}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  {label.text}
-                  {!label.draggable && (
-                    <button
-                      style={{
-                        marginLeft: 8,
-                        fontSize: 12,
-                        background: "#eee",
-                        border: "1px solid #ccc",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                      }}
-                      onClick={() =>
-                        setPlacedTexts((prev) =>
-                          prev.map((l) =>
-                            l.id === label.id ? { ...l, draggable: true } : l
-                          )
-                        )
-                      }
-                    >
-                      Make Draggable
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              {textInputPosition && isTextToolActive && (
-                <FloatingTextInput
-                  position={textInputPosition}
-                  onSubmit={(submittedText) => {
-                    setPlacedTexts((prev) => [
-                      ...prev,
-                      {
-                        id: uuidv4(),
-                        text: submittedText,
-                        position: textInputPosition,
-                        style: { ...textStyle },
-                        draggable: false,
-                      },
-                    ]);
-                    setTextInputPosition(null); // Clear text input position after submission
-                    setText("");
-                    setActiveTool(null);
-                    setIsTextToolActive(false);
-                    saveHistory();
-                  }}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 gap-2 border-t relative">
-            {/* Tools Section (horizontally scrollable) */}
-            <div className="w-full flex-shrink-0 flex flex-row gap-2 p-2 border rounded-md sm:mt-4 h-12 sm:h-auto items-center">
-              {/* Changed border-b to border-t */}
-              {/* Undo/Redo Buttons */}
-              <div className="flex justify-center w-[20%] border-r">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={undo}
-                  disabled={historyStep <= 0}
-                  title="Undo"
-                  className="flex-1"
-                >
-                  <Undo2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={redo}
-                  disabled={historyStep >= history.length - 1}
-                  title="Redo"
-                  className="flex-1 mr-2"
-                >
-                  <Redo2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="w-full flex-shrink-0 flex flex-row flex-1 gap-2 p-2 rounded-md overflow-x-auto whitespace-nowrap sm:mt-4 h-12 sm:h-auto items-center toolbar">
-                <Button
-                  variant={activeTool === "line" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("line")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <MinusIcon className="h-4 w-4" />
-                  <span className="sr-only">Line</span>
-                </Button>
-                <Button
-                  variant={
-                    (activeTool as DrawingTool) === "text"
-                      ? "secondary"
-                      : "ghost"
-                  }
-                  onClick={() => handleToolChange("text")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Type className="h-4 w-4" />
-                  <span className="sr-only">Text</span>
-                </Button>
-                <Button
-                  variant={activeTool === "arrow" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("arrow")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  <span className="sr-only">Arrow</span>
-                </Button>
-                <Button
-                  variant={
-                    activeTool === "double-arrow" ? "secondary" : "ghost"
-                  }
-                  onClick={() => handleToolChange("double-arrow")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <ArrowRightLeft className="h-4 w-4" />
-                  <span className="sr-only">Double Arrow</span>
-                </Button>
-                <Button
-                  variant={activeTool === "curve" ? "secondary" : "ghost"}
-                  onClick={() => {
-                    const drawingCanvas = drawingCanvasRef.current;
-                    const ctx = drawingCanvas?.getContext("2d");
-                    if (!drawingCanvas || !ctx) return;
-                    const imageData = ctx.getImageData(
-                      0,
-                      0,
-                      drawingCanvas.width,
-                      drawingCanvas.height
-                    ).data;
-                    const hasChanges = imageData.some((pixel, index) => {
-                      return index % 4 === 3 && pixel !== 0;
-                    });
-                    if (hasChanges) {
-                      setShowCurveConfirm(true);
-                    } else {
-                      setActiveTool("curve");
-                    }
-                  }}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <PenTool className="h-4 w-4" />
-                  <span className="sr-only">Curve</span>
-                </Button>
-                <Button
-                  variant={activeTool === "curve-arrow" ? "secondary" : "ghost"}
-                  onClick={() => {
-                    const drawingCanvas = drawingCanvasRef.current;
-                    const ctx = drawingCanvas?.getContext("2d");
-                    if (!drawingCanvas || !ctx) return;
-                    const imageData = ctx.getImageData(
-                      0,
-                      0,
-                      drawingCanvas.width,
-                      drawingCanvas.height
-                    ).data;
-                    const hasChanges = imageData.some((pixel, index) => {
-                      return index % 4 === 3 && pixel !== 0;
-                    });
-                    if (hasChanges) {
-                      setShowCurveArrowConfirm(true);
-                    } else {
-                      setActiveTool("curve-arrow");
-                    }
-                  }}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <PenTool className="h-4 w-4" />
-                  <span className="sr-only">Curve Arrow</span>
-                </Button>
-                <Button
-                  variant={activeTool === "pencil" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("pencil")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Pencil className="h-4 w-4" />
-                  <span className="sr-only">Pencil</span>
-                </Button>
-                <Button
-                  variant={activeTool === "eraser" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("eraser")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Eraser className="h-4 w-4" />
-                  <span className="sr-only">Eraser</span>
-                </Button>
-                <Button
-                  variant={activeTool === "rectangle" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("rectangle")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Square className="h-4 w-4" />
-                  <span className="sr-only">Rectangle</span>
-                </Button>
-                <Button
-                  variant={activeTool === "circle" ? "secondary" : "ghost"}
-                  onClick={() => handleToolChange("circle")}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Circle className="h-4 w-4" />
-                  <span className="sr-only">Circle</span>
-                </Button>
-                <Button
-                  variant={activeTool === "crop" ? "secondary" : "ghost"}
-                  onClick={() => {
-                    const drawingCanvas = drawingCanvasRef.current;
-                    const ctx = drawingCanvas?.getContext("2d");
-                    if (!drawingCanvas || !ctx) return;
-                    const imageData = ctx.getImageData(
-                      0,
-                      0,
-                      drawingCanvas.width,
-                      drawingCanvas.height
-                    ).data;
-                    const hasChanges = imageData.some((pixel, index) => {
-                      return index % 4 === 3 && pixel !== 0;
-                    });
-                    if (hasChanges) {
-                      setShowCropConfirm(true);
-                    } else {
-                      handleToolChange("crop");
-                    }
-                  }}
-                  className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
-                >
-                  <Crop className="h-4 w-4" />
-                  <span className="sr-only">Crop</span>
-                </Button>
-              </div>
-            </div>
-            {/* Color dropdown and brush size (below tools, in a horizontal row) */}
-            <div className="flex flex-row gap-2 mt-1 sm:mt-4 w-full justify-between">
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="color-picker-sm"
-                  className="flex items-center gap-2"
-                >
-                  <Palette className="h-4 w-4" /> Color
-                </Label>
-                {/* <div className="rounded-full w-6 h-6"> */}
-                <input
-                  type="color"
-                  value={currentColor || textStyle.color}
-                  onChange={(e) => {
-                    setCurrentColor(e.target.value);
-                    setTextStyle((prev) => ({
-                      ...prev,
-                      color: e.target.value,
-                    }));
-                  }}
-                  className="rounded-full w-6 h-6"
-                />
-                {/* </div> */}
-              </div>
-
-              <div className="flex items-center gap-2 min-w-[12rem]">
-                <Label htmlFor="brush-size-sm" className="block">
-                  Size: {brushSize}px
-                </Label>
-                <div className="flex items-center gap-1 sm:gap-2 min-w-[8rem]">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setBrushSize((s) => Math.max(minBrushSize, s - 1))
-                    }
-                    className="sm:h-8 sm:w-8 h-6 w-6"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Slider
-                    id="brush-size-sm"
-                    min={minBrushSize}
-                    max={maxBrushSize}
-                    step={1}
-                    value={[brushSize]}
-                    onValueChange={(value) => setBrushSize(value[0])}
-                    className="flex-grow"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() =>
-                      setBrushSize((s) => Math.min(maxBrushSize, s + 1))
-                    }
-                    className="sm:h-8 sm:w-8 w-6 h-6"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-
+            {/* Confirmation dialog for crop */}
             {showCropConfirm && (
-              <div className="flex flex-col gap-2 z-10 absolute top-0 left-0 right-0 bg-background px-4 py-2 overflow-y-auto">
+              <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
                   after cropping. You can make new changes after cropping the
                   image.
                 </p>
-                <div className="flex sm:flex-col justify-around gap-2 flex-wrap">
+                <div className="flex flex-col gap-2 flex-wrap">
                   <Button
                     type="button"
                     onClick={() => {
@@ -1922,15 +1211,15 @@ export default function ImageEditorModal({
                         duration: 3000,
                       });
                     }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Proceed
                   </Button>
                   <Button
-                    type="button"
                     variant="outline"
+                    type="button"
                     onClick={() => setShowCropConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
                   </Button>
@@ -1938,36 +1227,37 @@ export default function ImageEditorModal({
               </div>
             )}
 
+            {/* Confirmation dialog for curve */}
             {showCurveConfirm && (
-              <div className="flex flex-col gap-2 z-10 absolute top-0 left-0 right-0 bg-background px-4 py-2 overflow-y-auto">
+              <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
-                  after cropping. You can make new changes after cropping the
-                  image.
+                  after drawing a new curve. You can make new changes after
+                  drawing the curve.
                 </p>
-                <div className="flex sm:flex-col justify-around gap-2 flex-wrap">
+                <div className="flex flex-col gap-2 flex-wrap">
                   <Button
                     type="button"
                     onClick={() => {
                       flattenLayers();
-                      setActiveTool("crop");
+                      setActiveTool("curve");
                       setShowCurveConfirm(false);
                       toast({
                         title: "Changes Saved",
                         description:
-                          "Previous changes have been saved. You can continue making new changes after cropping.",
+                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
                         duration: 3000,
                       });
                     }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Proceed
                   </Button>
                   <Button
-                    type="button"
                     variant="outline"
+                    type="button"
                     onClick={() => setShowCurveConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
                   </Button>
@@ -1976,35 +1266,35 @@ export default function ImageEditorModal({
             )}
 
             {showCurveArrowConfirm && (
-              <div className="flex flex-col gap-2 z-10 absolute top-0 left-0 right-0 bg-background px-4 py-2 overflow-y-auto">
+              <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
-                  after cropping. You can make new changes after cropping the
-                  image.
+                  after drawing a new curve. You can make new changes after
+                  drawing the curve.
                 </p>
-                <div className="flex sm:flex-col justify-around gap-2 flex-wrap">
+                <div className="flex flex-col gap-2 flex-wrap">
                   <Button
                     type="button"
                     onClick={() => {
                       flattenLayers();
-                      setActiveTool("crop");
+                      setActiveTool("curve-arrow");
                       setShowCurveArrowConfirm(false);
                       toast({
                         title: "Changes Saved",
                         description:
-                          "Previous changes have been saved. You can continue making new changes after cropping.",
+                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
                         duration: 3000,
                       });
                     }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Proceed
                   </Button>
                   <Button
-                    type="button"
                     variant="outline"
+                    type="button"
                     onClick={() => setShowCurveArrowConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 !h-max"
+                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
                   </Button>
@@ -2014,17 +1304,16 @@ export default function ImageEditorModal({
 
             {/* Tool-specific controls */}
             {activeTool === "crop" && (
-              <div className="flex flex-col gap-2 z-10 absolute top-0 left-0 right-0 bg-background px-4 py-2 overflow-y-auto">
+              <div className="space-y-4 mt-2">
                 <p className="text-sm text-muted-foreground">
                   Draw a rectangle to crop the image. Click "Save Changes" to
                   apply the crop.
                 </p>
-                <div className="flex sm:flex-col justify-around gap-2 flex-wrap">
+                <div className="flex flex-col gap-2 flex-wrap">
                   <Button
                     variant="outline"
                     onClick={() => {
                       setCropArea(null);
-                      setActiveTool(null);
                       const ctx = drawingCanvasRef.current?.getContext("2d");
                       if (ctx) {
                         ctx.clearRect(
@@ -2035,7 +1324,7 @@ export default function ImageEditorModal({
                         );
                       }
                     }}
-                    // disabled={!cropArea}
+                    disabled={!cropArea}
                     className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
@@ -2062,7 +1351,7 @@ export default function ImageEditorModal({
                 "double-arrow",
                 "curve",
               ].includes(activeTool) && (
-                <div className="flex sm:flex-col sm:mt-4 justify-start">
+                <div className="mt-4">
                   <Label
                     htmlFor="stroke-style"
                     className="flex items-center gap-2 mb-1"
@@ -2110,6 +1399,194 @@ export default function ImageEditorModal({
                   </Select>
                 </div>
               )}
+
+            {activeTool &&
+              ["text", "rectangle", "curcle"].includes(activeTool) && (
+                <div className="space-y-4 mt-2">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="backgroundColor" className="text-sm">
+                      Background Color
+                    </Label>
+                    <input
+                      id="backgroundColor"
+                      type="color"
+                      value={backgroundColor || "transparent"}
+                      onChange={(e) => setBackgroundColor(e.target.value)}
+                      className="rounded-full w-6 h-6"
+                    />
+                  </div>
+
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Click on the canvas to add text
+                  </p>
+                </div>
+              )}
+
+            {/* Color dropdown for large screens */}
+            <div className="flex items-center justify-start gap-2 mt-4">
+              <Label
+                htmlFor="color-picker-lg"
+                className="flex items-center gap-2"
+              >
+                <Palette className="h-4 w-4" /> Color
+              </Label>
+              <input
+                type="color"
+                value={currentColor}
+                onChange={(e) => setCurrentColor(e.target.value)}
+                className="rounded-full w-12 h-6"
+              />
+            </div>
+
+            {/* Brush size for large screens */}
+            <div className="mt-4">
+              <Label htmlFor="brush-size-lg" className="mb-2 block">
+                Brush Size: {brushSize}px
+              </Label>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setBrushSize((s) => Math.max(minBrushSize, s - 1))
+                  }
+                  className="h-8 w-8"
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+                <Slider
+                  id="brush-size-lg"
+                  min={minBrushSize}
+                  max={maxBrushSize}
+                  step={1}
+                  value={[brushSize]}
+                  onValueChange={(value) => setBrushSize(value[0])}
+                  className="flex-grow"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setBrushSize((s) => Math.min(maxBrushSize, s + 1))
+                  }
+                  className="h-8 w-8"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative">
+            <div
+              className="relative border-2 border-gray-300 w-full h-full lg:w-[420px] lg:h-[750px]"
+              id="drawing-canvas"
+            >
+              <canvas
+                ref={baseCanvasRef}
+                className="absolute bg-white object-contain w-full h-full"
+              />
+              <canvas
+                ref={drawingCanvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="absolute w-full h-full"
+                style={{
+                  cursor:
+                    activeTool === "text"
+                      ? "text"
+                      : activeTool === null
+                      ? "default"
+                      : "crosshair",
+                }}
+              />
+              {mounted && activeTool === "rectangle" && (
+                <KonvaRectangle
+                  ref={konvaRectRef}
+                  width={drawingCanvasRef.current?.width || 420}
+                  height={drawingCanvasRef.current?.height || 750}
+                  active={activeTool === "rectangle"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  rectangles={rectangles}
+                  setRectangles={setRectangles}
+                  onFlatten={handleKonvaRectFlatten}
+                />
+              )}
+
+              {activeTool === "curve" && (
+                <CurveTool
+                  active={activeTool === "curve"}
+                  canvasRef={drawingCanvasRef}
+                  currentColor={currentColor}
+                  setActiveTool={setActiveTool}
+                  strokeStyle={strokeStyle}
+                  brushSize={brushSize}
+                />
+              )}
+
+              {activeTool === "curve-arrow" && (
+                <CurveArrowTool
+                  active={activeTool === "curve-arrow"}
+                  canvasRef={drawingCanvasRef}
+                  currentColor={currentColor}
+                  setActiveTool={setActiveTool}
+                  strokeStyle={strokeStyle}
+                  brushSize={brushSize}
+                />
+              )}
+
+              {mounted && activeTool === "text" && (
+                <TextEditor
+                  ref={textEditorRef}
+                  width={drawingCanvasRef.current?.width || 420}
+                  height={drawingCanvasRef.current?.height || 750}
+                  active={activeTool === "text"}
+                  color={currentColor}
+                  backgroundColor={backgroundColor}
+                  fontSize={fontSize}
+                  fontFamily={fontFamily}
+                  texts={texts}
+                  setTexts={setTexts}
+                  onFlatten={handleTextFlatten}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="lg:hidden">
+            <MobileView
+              undo={undo}
+              historyStep={historyStep}
+              redo={redo}
+              setActiveTool={setActiveTool}
+              activeTool={activeTool}
+              drawingCanvasRef={drawingCanvasRef}
+              handleToolChange={handleToolChange}
+              currentColor={currentColor}
+              setCurrentColor={setCurrentColor}
+              brushSize={brushSize}
+              setBrushSize={setBrushSize}
+              minBrushSize={minBrushSize}
+              maxBrushSize={maxBrushSize}
+              showCropConfirm={showCropConfirm}
+              setShowCropConfirm={setShowCropConfirm}
+              showCurveConfirm={showCurveConfirm}
+              setShowCurveConfirm={setShowCurveConfirm}
+              showCurveArrowConfirm={showCurveArrowConfirm}
+              setShowCurveArrowConfirm={setShowCurveArrowConfirm}
+              flattenLayers={flattenLayers}
+              applyCrop={applyCrop}
+              cropArea={cropArea}
+              setCropArea={setCropArea}
+              strokeStyle={strokeStyle}
+              setStrokeStyle={setStrokeStyle}
+            />
           </div>
         </div>
 
