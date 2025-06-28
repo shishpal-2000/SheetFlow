@@ -18,6 +18,7 @@ export interface KonvaRectangle {
   strokeWidth: number;
   draggable: boolean;
   rotation: number;
+  fill?: string; // Optional fill color for the rectangle
 }
 
 interface KonvaRectangleProps {
@@ -26,6 +27,7 @@ interface KonvaRectangleProps {
   active: boolean;
   color: string;
   brushSize: number;
+  backgroundColor?: string; // Optional background color prop
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
@@ -36,7 +38,10 @@ export interface KonvaRectangleHandle {
 }
 
 const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
-  ({ width, height, active, color, brushSize, onFlatten }, ref) => {
+  (
+    { width, height, active, color, brushSize, backgroundColor, onFlatten },
+    ref
+  ) => {
     const [rectangles, setRectangles] = useState<KonvaRectangle[]>([]);
     const [newRect, setNewRect] = useState<KonvaRectangle | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -74,6 +79,23 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       }
     }, [selectedId, rectangles]);
 
+    // Update selected rectangle's color/backgroundColor when props change
+    useEffect(() => {
+      if (selectedId) {
+        setRectangles((rects) =>
+          rects.map((r) =>
+            r.id === selectedId
+              ? {
+                  ...r,
+                  stroke: color,
+                  fill: backgroundColor || undefined,
+                }
+              : r
+          )
+        );
+      }
+    }, [color, backgroundColor, selectedId]);
+
     // Drawing logic
     const handleMouseDown = (e: any) => {
       if (!active) return;
@@ -102,6 +124,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         strokeWidth: brushSize,
         draggable: true,
         rotation: 0,
+        fill: backgroundColor || undefined,
       });
       setSelectedId(id);
     };
@@ -208,6 +231,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               strokeWidth={rect.strokeWidth}
               draggable={rect.draggable}
               rotation={rect.rotation}
+              fill={rect.fill}
               onClick={() => handleRectClick(rect.id)}
               onTap={() => handleRectClick(rect.id)}
               onDragEnd={(e) => handleDragEnd(e, rect.id)}
@@ -223,6 +247,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               stroke={newRect.stroke}
               strokeWidth={newRect.strokeWidth}
               dash={[4, 4]}
+              fill={newRect.fill}
             />
           )}
           <Transformer

@@ -160,7 +160,6 @@ export default function ImageEditorModal({
   const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
   const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
-
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
     offsetY: number;
@@ -360,70 +359,6 @@ export default function ImageEditorModal({
     },
     [imageDrawParams, setArrows, saveHistory]
   );
-
-  // const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
-  //   if (!drawingCanvasRef.current) return;
-  //   const ctx = drawingCanvasRef.current.getContext("2d");
-  //   if (!ctx) return;
-
-  //   textShapes.forEach((t) => {
-  //     ctx.save();
-
-  //     // Create a temporary element to measure text dimensions
-  //     const textNode = document.createElement("span");
-  //     textNode.innerText = t.text;
-  //     textNode.style.fontSize = `${t.fontSize}px`;
-  //     textNode.style.fontFamily = t.fontFamily;
-  //     textNode.style.position = "absolute";
-  //     textNode.style.visibility = "hidden";
-  //     document.body.appendChild(textNode);
-
-  //     // Get dimensions with padding
-  //     const padding = 10;
-  //     const width = textNode.offsetWidth + padding * 2;
-  //     const height = textNode.offsetHeight + padding * 2;
-
-  //     document.body.removeChild(textNode);
-
-  //     // Draw background with rounded corners
-  //     if (t.backgroundColor && t.backgroundColor !== "transparent") {
-  //       ctx.fillStyle = t.backgroundColor;
-
-  //       // Draw rounded rectangle
-  //       const radius = 10; // Same as cornerRadius in the Rect component
-  //       const x = t.x;
-  //       const y = t.y;
-
-  //       ctx.beginPath();
-  //       ctx.moveTo(x + radius, y);
-  //       ctx.lineTo(x + width - radius, y);
-  //       ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  //       ctx.lineTo(x + width, y + height - radius);
-  //       ctx.quadraticCurveTo(
-  //         x + width,
-  //         y + height,
-  //         x + width - radius,
-  //         y + height
-  //       );
-  //       ctx.lineTo(x + radius, y + height);
-  //       ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  //       ctx.lineTo(x, y + radius);
-  //       ctx.quadraticCurveTo(x, y, x + radius, y);
-  //       ctx.closePath();
-  //       ctx.fill();
-  //     }
-
-  //     // Draw text on top of background
-  //     ctx.font = `${t.fontSize}px ${t.fontFamily}`;
-  //     ctx.fillStyle = t.fill;
-  //     ctx.fillText(t.text, t.x + padding, t.y + padding + t.fontSize); // Add padding to position text
-
-  //     ctx.restore();
-  //   });
-
-  //   setTexts([]);
-  //   saveHistory();
-  // }, []);
 
   const handleKonvaCircleFlatten = useCallback(
     (circleShapes: KonvaCircleShape[]) => {
@@ -1737,7 +1672,7 @@ export default function ImageEditorModal({
               )}
 
             {activeTool &&
-              ["text", "rectangle", "curcle"].includes(activeTool) && (
+              ["text", "rectangle", "circle"].includes(activeTool) && (
                 <div className="space-y-4 mt-2">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="backgroundColor" className="text-sm">
@@ -1849,6 +1784,7 @@ export default function ImageEditorModal({
                   active={activeTool === "rectangle"}
                   color={currentColor}
                   brushSize={brushSize}
+                  backgroundColor={backgroundColor}
                   rectangles={rectangles}
                   setRectangles={setRectangles}
                   onFlatten={handleKonvaRectFlatten}
@@ -1886,6 +1822,7 @@ export default function ImageEditorModal({
                   color={currentColor}
                   brushSize={brushSize}
                   circles={circles}
+                  backgroundColor={backgroundColor}
                   setCircles={setCircles} // Use history-aware setter
                   onFlatten={handleKonvaCircleFlatten}
                 />
