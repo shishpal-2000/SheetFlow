@@ -160,20 +160,6 @@ export default function ImageEditorModal({
   const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
   const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
-  const [rectHistory, setRectHistory] = useState<any[][]>([]);
-  const [rectHistoryStep, setRectHistoryStep] = useState(-1);
-
-  const [circleHistory, setCircleHistory] = useState<KonvaCircleShape[][]>([]);
-  const [circleHistoryStep, setCircleHistoryStep] = useState(-1);
-
-  const [arrowHistory, setArrowHistory] = useState<KonvaArrow[][]>([]);
-  const [arrowHistoryStep, setArrowHistoryStep] = useState(-1);
-
-  const [doubleArrowHistory, setDoubleArrowHistory] = useState<
-    KonvaDoubleArrowShape[][]
-  >([]);
-  const [doubleArrowHistoryStep, setDoubleArrowHistoryStep] = useState(-1);
-
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
     offsetY: number;
@@ -188,21 +174,6 @@ export default function ImageEditorModal({
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // const handleKonvaRectFlatten = useCallback((rects: any) => {
-  //   if (!drawingCanvasRef.current) return;
-  //   const ctx = drawingCanvasRef.current.getContext("2d");
-  //   if (!ctx) return;
-  //   rects.forEach((r: any) => {
-  //     ctx.save();
-  //     ctx.strokeStyle = r.stroke;
-  //     ctx.lineWidth = r.strokeWidth ?? 1;
-  //     ctx.strokeRect(r.x, r.y, r.width, r.height);
-  //     ctx.restore();
-  //   });
-  //   setRectangles([]);
-  //   saveHistory();
-  // }, []);
 
   const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
@@ -699,79 +670,6 @@ export default function ImageEditorModal({
       }
     }
   }, [historyStep, history]);
-
-  // Undo/Redo for each shape
-  const undoShape = useCallback(() => {
-    if (activeTool === "rectangle" && rectHistoryStep > 0) {
-      setRectHistoryStep(rectHistoryStep - 1);
-      setRectangles(rectHistory[rectHistoryStep - 1]);
-    } else if (activeTool === "circle" && circleHistoryStep > 0) {
-      setCircleHistoryStep(circleHistoryStep - 1);
-      setCircles(circleHistory[circleHistoryStep - 1]);
-    } else if (activeTool === "arrow" && arrowHistoryStep > 0) {
-      setArrowHistoryStep(arrowHistoryStep - 1);
-      setArrows(arrowHistory[arrowHistoryStep - 1]);
-    } else if (activeTool === "double-arrow" && doubleArrowHistoryStep > 0) {
-      setDoubleArrowHistoryStep(doubleArrowHistoryStep - 1);
-      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep - 1]);
-    } else {
-      // fallback to canvas undo
-      undo();
-    }
-  }, [
-    activeTool,
-    rectHistoryStep,
-    rectHistory,
-    circleHistoryStep,
-    circleHistory,
-    arrowHistoryStep,
-    arrowHistory,
-    doubleArrowHistoryStep,
-    doubleArrowHistory,
-    undo,
-  ]);
-
-  const redoShape = useCallback(() => {
-    if (
-      activeTool === "rectangle" &&
-      rectHistoryStep < rectHistory.length - 1
-    ) {
-      setRectHistoryStep(rectHistoryStep + 1);
-      setRectangles(rectHistory[rectHistoryStep + 1]);
-    } else if (
-      activeTool === "circle" &&
-      circleHistoryStep < circleHistory.length - 1
-    ) {
-      setCircleHistoryStep(circleHistoryStep + 1);
-      setCircles(circleHistory[circleHistoryStep + 1]);
-    } else if (
-      activeTool === "arrow" &&
-      arrowHistoryStep < arrowHistory.length - 1
-    ) {
-      setArrowHistoryStep(arrowHistoryStep + 1);
-      setArrows(arrowHistory[arrowHistoryStep + 1]);
-    } else if (
-      activeTool === "double-arrow" &&
-      doubleArrowHistoryStep < doubleArrowHistory.length - 1
-    ) {
-      setDoubleArrowHistoryStep(doubleArrowHistoryStep + 1);
-      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep + 1]);
-    } else {
-      // fallback to canvas redo
-      redo();
-    }
-  }, [
-    activeTool,
-    rectHistoryStep,
-    rectHistory,
-    circleHistoryStep,
-    circleHistory,
-    arrowHistoryStep,
-    arrowHistory,
-    doubleArrowHistoryStep,
-    doubleArrowHistory,
-    redo,
-  ]);
 
   // Add download function
   const downloadImage = () => {
@@ -1975,6 +1873,48 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
+                />
+              )}
+
+              {mounted && activeTool === "circle" && (
+                <KonvaCircle
+                  ref={konvaCircleRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "circle"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  circles={circles}
+                  setCircles={setCircles} // Use history-aware setter
+                  onFlatten={handleKonvaCircleFlatten}
+                />
+              )}
+
+              {mounted && activeTool === "arrow" && (
+                <ArrowKonva
+                  ref={konvaArrowRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "arrow"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  arrows={arrows}
+                  setArrows={setArrows} // Use history-aware setter
+                  onFlatten={handleKonvaArrowFlatten}
+                />
+              )}
+
+              {mounted && activeTool === "double-arrow" && (
+                <KonvaDoubleArrow
+                  ref={konvaDoubleArrowRef}
+                  width={drawingCanvasRef.current?.width || 800}
+                  height={drawingCanvasRef.current?.height || 600}
+                  active={activeTool === "double-arrow"}
+                  color={currentColor}
+                  brushSize={brushSize}
+                  arrows={doubleArrows}
+                  setArrows={setDoubleArrows} // Use history-aware setter
+                  onFlatten={handleKonvaDoubleArrowFlatten}
                 />
               )}
 
