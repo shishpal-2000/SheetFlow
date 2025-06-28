@@ -213,6 +213,7 @@ export default function ImageEditorModal({
       if (!drawingCanvasRef.current || !imageDrawParams) return;
       const ctx = drawingCanvasRef.current.getContext("2d");
       if (!ctx) return;
+
       const {
         offsetX,
         offsetY,
@@ -221,30 +222,71 @@ export default function ImageEditorModal({
         naturalWidth,
         naturalHeight,
       } = imageDrawParams;
-      // Calculate scale factors
+
       const scaleX = drawWidth / naturalWidth;
       const scaleY = drawHeight / naturalHeight;
+
       arrowShapes.forEach((a: any) => {
         const [x1, y1, x2, y2] = a.points;
         const imgX1 = (x1 - offsetX) / scaleX;
         const imgY1 = (y1 - offsetY) / scaleY;
         const imgX2 = (x2 - offsetX) / scaleX;
         const imgY2 = (y2 - offsetY) / scaleY;
+
         const drawX1 = offsetX + imgX1 * scaleX;
         const drawY1 = offsetY + imgY1 * scaleY;
         const drawX2 = offsetX + imgX2 * scaleX;
         const drawY2 = offsetY + imgY2 * scaleY;
+
         ctx.save();
         ctx.strokeStyle = a.stroke;
         ctx.lineWidth = a.strokeWidth ?? 1;
+
+        // Apply stroke style
+        switch (strokeStyle) {
+          case "solid":
+            ctx.setLineDash([]);
+            break;
+          case "dashed":
+            ctx.setLineDash([brushSize * 3, brushSize * 2]);
+            break;
+          case "dotted":
+            ctx.setLineDash([brushSize, brushSize]);
+            break;
+          case "double":
+            ctx.setLineDash([]);
+            break;
+        }
+
+        // Draw main line
         ctx.beginPath();
         ctx.moveTo(drawX1, drawY1);
         ctx.lineTo(drawX2, drawY2);
         ctx.stroke();
-        // Draw arrowhead at both ends
+
+        // Draw arrowheads at both ends
         const headlen = 15;
         const angle = Math.atan2(drawY2 - drawY1, drawX2 - drawX1);
-        // End arrowhead
+
+        ctx.setLineDash([]); // Reset dash for arrowheads
+
+        // First arrowhead
+        ctx.beginPath();
+        ctx.moveTo(drawX1, drawY1);
+        ctx.lineTo(
+          drawX1 + headlen * Math.cos(angle + Math.PI + Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle + Math.PI + Math.PI / 7)
+        );
+        ctx.lineTo(
+          drawX1 + headlen * Math.cos(angle + Math.PI - Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle + Math.PI - Math.PI / 7)
+        );
+        ctx.lineTo(drawX1, drawY1);
+        ctx.stroke();
+        ctx.fillStyle = a.stroke;
+        ctx.fill();
+
+        // Second arrowhead
         ctx.beginPath();
         ctx.moveTo(drawX2, drawY2);
         ctx.lineTo(
@@ -256,38 +298,16 @@ export default function ImageEditorModal({
           drawY2 - headlen * Math.sin(angle + Math.PI / 7)
         );
         ctx.lineTo(drawX2, drawY2);
-        ctx.lineTo(
-          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
-          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
-        );
         ctx.stroke();
         ctx.fillStyle = a.stroke;
         ctx.fill();
-        // Start arrowhead
-        ctx.beginPath();
-        ctx.moveTo(drawX1, drawY1);
-        ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
-        );
-        ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle + Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle + Math.PI / 7)
-        );
-        ctx.lineTo(drawX1, drawY1);
-        ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
-        );
-        ctx.stroke();
-        ctx.fillStyle = a.stroke;
-        ctx.fill();
+
         ctx.restore();
       });
       setDoubleArrows([]);
       saveHistory();
     },
-    [imageDrawParams, setDoubleArrows, saveHistory]
+    [imageDrawParams, setDoubleArrows, saveHistory, strokeStyle, brushSize]
   );
 
   const handleKonvaArrowFlatten = useCallback(
@@ -326,6 +346,23 @@ export default function ImageEditorModal({
         ctx.save();
         ctx.strokeStyle = a.stroke;
         ctx.lineWidth = a.strokeWidth ?? 1;
+
+        // Apply stroke style
+        switch (strokeStyle) {
+          case "solid":
+            ctx.setLineDash([]);
+            break;
+          case "dashed":
+            ctx.setLineDash([brushSize * 3, brushSize * 2]);
+            break;
+          case "dotted":
+            ctx.setLineDash([brushSize, brushSize]);
+            break;
+          case "double":
+            ctx.setLineDash([]);
+            break;
+        }
+
         ctx.beginPath();
         ctx.moveTo(drawX1, drawY1);
         ctx.lineTo(drawX2, drawY2);
@@ -334,6 +371,7 @@ export default function ImageEditorModal({
         // Draw arrowhead
         const headlen = 15;
         const angle = Math.atan2(drawY2 - drawY1, drawX2 - drawX1);
+        ctx.setLineDash([]); // Reset dash for arrowhead
         ctx.beginPath();
         ctx.moveTo(drawX2, drawY2);
         ctx.lineTo(
@@ -357,7 +395,7 @@ export default function ImageEditorModal({
       setArrows([]);
       saveHistory();
     },
-    [imageDrawParams, setArrows, saveHistory]
+    [imageDrawParams, setArrows, saveHistory, strokeStyle, brushSize]
   );
 
   // const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
@@ -1898,6 +1936,7 @@ export default function ImageEditorModal({
                   active={activeTool === "arrow"}
                   color={currentColor}
                   brushSize={brushSize}
+                  strokeStyle={strokeStyle}
                   arrows={arrows}
                   setArrows={setArrows} // Use history-aware setter
                   onFlatten={handleKonvaArrowFlatten}
@@ -1912,6 +1951,7 @@ export default function ImageEditorModal({
                   active={activeTool === "double-arrow"}
                   color={currentColor}
                   brushSize={brushSize}
+                  strokeStyle={strokeStyle}
                   arrows={doubleArrows}
                   setArrows={setDoubleArrows} // Use history-aware setter
                   onFlatten={handleKonvaDoubleArrowFlatten}

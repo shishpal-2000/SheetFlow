@@ -51,12 +51,33 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       },
     }));
 
+    // Keyboard delete
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+          setCircles((circle) => circle.filter((c) => c.id !== selectedId));
+          setSelectedId(null);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedId]);
+
     // Double click to start a new circle
-    const handleStageDblClick = (e: any) => {
+    const handleStageClick = (e: any) => {
       if (!active) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
+
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       const id = `circle-${Date.now()}`;
       setNewCircle({
         id,
@@ -73,7 +94,15 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     // Drag to set radius
     const handleMouseMove = (e: any) => {
       if (!active || !newCircle) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       const dx = pos.x - newCircle.x;
       const dy = pos.y - newCircle.y;
       setNewCircle({
@@ -82,8 +111,14 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: any) => {
       if (!active || !newCircle) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       setCircles((cs) => [...cs, newCircle]);
       setNewCircle(null);
     };
@@ -145,15 +180,32 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         style={{
           position: "absolute",
           inset: 0,
-          
+
           width: "100%",
           height: "100%",
           zIndex: 30,
           pointerEvents: active ? "auto" : "none",
         }}
-        onDblClick={handleStageDblClick}
+        // Mouse events (Desktop)
+        onDblClick={handleStageClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        // Touch events (Mobile)
+        onTouchStart={handleStageClick}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
+        onClick={(e) => {
+          const clickedOnEmpty = e.target === e.target.getStage();
+          if (clickedOnEmpty && selectedId) {
+            setSelectedId(null); // Deselect when clicking empty space
+          }
+        }}
+        onTap={(e) => {
+          const clickedOnEmpty = e.target === e.target.getStage();
+          if (clickedOnEmpty && selectedId) {
+            setSelectedId(null); // Deselect when tapping empty space
+          }
+        }}
       >
         <Layer>
           {circles.map((circle) => (

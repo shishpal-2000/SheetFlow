@@ -100,7 +100,7 @@ const MobileView = ({
   setStrokeStyle,
 }: MobileViewProps) => {
   return (
-    <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 gap-2 border-t relative">
+    <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 gap-2 border-t relative z-50">
       {/* Tools Section (horizontally scrollable) */}
       <div className="w-full flex-shrink-0 flex flex-row gap-2 p-2 border rounded-md sm:mt-4 h-12 sm:h-auto items-center">
         {/* Changed border-b to border-t */}
