@@ -12,6 +12,17 @@ import type { KonvaRectangleHandle } from "./KonvaRectangle";
 const ArrowKonva = dynamic(() => import("./ArrowKonva"), { ssr: false });
 import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
 
+const KonvaCircle = dynamic(() => import("./KonvaCircle"), { ssr: false });
+import type { KonvaCircleHandle, KonvaCircleShape } from "./KonvaCircle";
+
+const KonvaDoubleArrow = dynamic(() => import("./KonvaDoubleArrow"), {
+  ssr: false,
+});
+import type {
+  KonvaDoubleArrowHandle,
+  KonvaDoubleArrowShape,
+} from "./KonvaDoubleArrow";
+
 import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
@@ -141,6 +152,28 @@ export default function ImageEditorModal({
   const [arrows, setArrows] = useState<KonvaArrow[]>([]);
   const konvaArrowRef = useRef<KonvaArrowHandle>(null);
 
+  // circles
+  const [circles, setCircles] = useState<KonvaCircleShape[]>([]);
+  const konvaCircleRef = useRef<KonvaCircleHandle>(null);
+
+  // Add state and ref for double arrows
+  const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
+  const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
+
+  const [rectHistory, setRectHistory] = useState<any[][]>([]);
+  const [rectHistoryStep, setRectHistoryStep] = useState(-1);
+
+  const [circleHistory, setCircleHistory] = useState<KonvaCircleShape[][]>([]);
+  const [circleHistoryStep, setCircleHistoryStep] = useState(-1);
+
+  const [arrowHistory, setArrowHistory] = useState<KonvaArrow[][]>([]);
+  const [arrowHistoryStep, setArrowHistoryStep] = useState(-1);
+
+  const [doubleArrowHistory, setDoubleArrowHistory] = useState<
+    KonvaDoubleArrowShape[][]
+  >([]);
+  const [doubleArrowHistoryStep, setDoubleArrowHistoryStep] = useState(-1);
+
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
     offsetY: number;
@@ -203,6 +236,88 @@ export default function ImageEditorModal({
     setRectangles([]);
     saveHistory();
   }, []);
+
+  const handleKonvaDoubleArrowFlatten = useCallback(
+    (arrowShapes: any) => {
+      if (!drawingCanvasRef.current || !imageDrawParams) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
+      const {
+        offsetX,
+        offsetY,
+        drawWidth,
+        drawHeight,
+        naturalWidth,
+        naturalHeight,
+      } = imageDrawParams;
+      // Calculate scale factors
+      const scaleX = drawWidth / naturalWidth;
+      const scaleY = drawHeight / naturalHeight;
+      arrowShapes.forEach((a: any) => {
+        const [x1, y1, x2, y2] = a.points;
+        const imgX1 = (x1 - offsetX) / scaleX;
+        const imgY1 = (y1 - offsetY) / scaleY;
+        const imgX2 = (x2 - offsetX) / scaleX;
+        const imgY2 = (y2 - offsetY) / scaleY;
+        const drawX1 = offsetX + imgX1 * scaleX;
+        const drawY1 = offsetY + imgY1 * scaleY;
+        const drawX2 = offsetX + imgX2 * scaleX;
+        const drawY2 = offsetY + imgY2 * scaleY;
+        ctx.save();
+        ctx.strokeStyle = a.stroke;
+        ctx.lineWidth = a.strokeWidth ?? 1;
+        ctx.beginPath();
+        ctx.moveTo(drawX1, drawY1);
+        ctx.lineTo(drawX2, drawY2);
+        ctx.stroke();
+        // Draw arrowhead at both ends
+        const headlen = 15;
+        const angle = Math.atan2(drawY2 - drawY1, drawX2 - drawX1);
+        // End arrowhead
+        ctx.beginPath();
+        ctx.moveTo(drawX2, drawY2);
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle + Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle + Math.PI / 7)
+        );
+        ctx.lineTo(drawX2, drawY2);
+        ctx.lineTo(
+          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
+          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.stroke();
+        ctx.fillStyle = a.stroke;
+        ctx.fill();
+        // Start arrowhead
+        ctx.beginPath();
+        ctx.moveTo(drawX1, drawY1);
+        ctx.lineTo(
+          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.lineTo(
+          drawX1 + headlen * Math.cos(angle + Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle + Math.PI / 7)
+        );
+        ctx.lineTo(drawX1, drawY1);
+        ctx.lineTo(
+          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.stroke();
+        ctx.fillStyle = a.stroke;
+        ctx.fill();
+        ctx.restore();
+      });
+      setDoubleArrows([]);
+      saveHistory();
+    },
+    [imageDrawParams, setDoubleArrows, saveHistory]
+  );
 
   const handleKonvaArrowFlatten = useCallback(
     (arrowShapes: KonvaArrow[]) => {
@@ -337,6 +452,26 @@ export default function ImageEditorModal({
   //   setTexts([]);
   //   saveHistory();
   // }, []);
+
+  const handleKonvaCircleFlatten = useCallback(
+    (circleShapes: KonvaCircleShape[]) => {
+      if (!drawingCanvasRef.current) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
+      circleShapes.forEach((c) => {
+        ctx.save();
+        ctx.strokeStyle = c.stroke;
+        ctx.lineWidth = c.strokeWidth ?? 1;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.restore();
+      });
+      setCircles([]);
+      saveHistory();
+    },
+    []
+  );
 
   const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
     if (!drawingCanvasRef.current) return;
@@ -565,6 +700,79 @@ export default function ImageEditorModal({
     }
   }, [historyStep, history]);
 
+  // Undo/Redo for each shape
+  const undoShape = useCallback(() => {
+    if (activeTool === "rectangle" && rectHistoryStep > 0) {
+      setRectHistoryStep(rectHistoryStep - 1);
+      setRectangles(rectHistory[rectHistoryStep - 1]);
+    } else if (activeTool === "circle" && circleHistoryStep > 0) {
+      setCircleHistoryStep(circleHistoryStep - 1);
+      setCircles(circleHistory[circleHistoryStep - 1]);
+    } else if (activeTool === "arrow" && arrowHistoryStep > 0) {
+      setArrowHistoryStep(arrowHistoryStep - 1);
+      setArrows(arrowHistory[arrowHistoryStep - 1]);
+    } else if (activeTool === "double-arrow" && doubleArrowHistoryStep > 0) {
+      setDoubleArrowHistoryStep(doubleArrowHistoryStep - 1);
+      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep - 1]);
+    } else {
+      // fallback to canvas undo
+      undo();
+    }
+  }, [
+    activeTool,
+    rectHistoryStep,
+    rectHistory,
+    circleHistoryStep,
+    circleHistory,
+    arrowHistoryStep,
+    arrowHistory,
+    doubleArrowHistoryStep,
+    doubleArrowHistory,
+    undo,
+  ]);
+
+  const redoShape = useCallback(() => {
+    if (
+      activeTool === "rectangle" &&
+      rectHistoryStep < rectHistory.length - 1
+    ) {
+      setRectHistoryStep(rectHistoryStep + 1);
+      setRectangles(rectHistory[rectHistoryStep + 1]);
+    } else if (
+      activeTool === "circle" &&
+      circleHistoryStep < circleHistory.length - 1
+    ) {
+      setCircleHistoryStep(circleHistoryStep + 1);
+      setCircles(circleHistory[circleHistoryStep + 1]);
+    } else if (
+      activeTool === "arrow" &&
+      arrowHistoryStep < arrowHistory.length - 1
+    ) {
+      setArrowHistoryStep(arrowHistoryStep + 1);
+      setArrows(arrowHistory[arrowHistoryStep + 1]);
+    } else if (
+      activeTool === "double-arrow" &&
+      doubleArrowHistoryStep < doubleArrowHistory.length - 1
+    ) {
+      setDoubleArrowHistoryStep(doubleArrowHistoryStep + 1);
+      setDoubleArrows(doubleArrowHistory[doubleArrowHistoryStep + 1]);
+    } else {
+      // fallback to canvas redo
+      redo();
+    }
+  }, [
+    activeTool,
+    rectHistoryStep,
+    rectHistory,
+    circleHistoryStep,
+    circleHistory,
+    arrowHistoryStep,
+    arrowHistory,
+    doubleArrowHistoryStep,
+    doubleArrowHistory,
+    redo,
+  ]);
+
   // Add download function
   const downloadImage = () => {
     const baseCanvas = baseCanvasRef.current;
@@ -632,9 +840,19 @@ export default function ImageEditorModal({
       konvaRectRef.current.flatten();
     }
 
+    // If leaving circle tool, flatten circles before switching
+    if (activeTool === "circle" && konvaCircleRef.current) {
+      konvaCircleRef.current.flatten();
+    }
+
     // If leaving arrow tool, flatten arrows before switching
     if (activeTool === "arrow" && konvaArrowRef.current) {
       konvaArrowRef.current.flatten();
+    }
+
+    // If leaving double-arrow tool, flatten double arrows before switching
+    if (activeTool === "double-arrow" && konvaDoubleArrowRef.current) {
+      konvaDoubleArrowRef.current.flatten();
     }
 
     if (activeTool === "text" && textEditorRef.current) {
@@ -1030,8 +1248,14 @@ export default function ImageEditorModal({
     if (konvaRectRef.current) {
       konvaRectRef.current.flatten();
     }
+    if (konvaCircleRef.current) {
+      konvaCircleRef.current.flatten();
+    }
     if (konvaArrowRef.current) {
       konvaArrowRef.current.flatten();
+    }
+    if (konvaDoubleArrowRef.current) {
+      konvaDoubleArrowRef.current.flatten();
     }
     if (textEditorRef.current) {
       textEditorRef.current.flatten();
