@@ -228,7 +228,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
           pointerEvents: active ? "auto" : "none",
         }}
         // Mouse events (Desktop)
-        onDblClick={handleStageClick}
+        onMouseDown={handleStageClick}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         // Touch events (Mobile)

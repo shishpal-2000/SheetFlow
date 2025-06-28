@@ -232,6 +232,21 @@ const KonvaDoubleArrow = forwardRef<
       }
     };
 
+    useEffect(() => {
+      if (selectedId) {
+        setArrows((arrs) =>
+          arrs.map((a) =>
+            a.id === selectedId
+              ? {
+                  ...a,
+                  stroke: color,
+                }
+              : a
+          )
+        );
+      }
+    }, [color, selectedId]);
+
     // Single click to start drawing
     const handleStageClick = (e: any) => {
       if (!active) return;
