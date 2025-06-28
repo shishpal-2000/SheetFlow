@@ -63,6 +63,7 @@ import {
   PenTool,
   Download,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { CurveTool } from "./CurveTool";
 import CurveArrowTool from "./CurveArrowTool";
@@ -128,8 +129,9 @@ export default function ImageEditorModal({
   const [showCropConfirm, setShowCropConfirm] = useState(false);
   const [showCurveConfirm, setShowCurveConfirm] = useState(false);
   const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
+  const { toast } = useToast();
 
-  // jai maa kali
+  // Konva Rectangle state and ref
   const [rectangles, setRectangles] = useState<any[]>([]);
   const konvaRectRef = useRef<KonvaRectangleHandle>(null);
 
@@ -160,6 +162,16 @@ export default function ImageEditorModal({
   const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
   const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
+  // Mobile view state for delete
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(
+    null
+  );
+  const [selectedElementType, setSelectedElementType] = useState<string | null>(
+    null
+  );
+  const [showTrashIcon, setShowTrashIcon] = useState(false);
+  const [isDraggedOverTrash, setIsDraggedOverTrash] = useState(false);
+
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
     offsetY: number;
@@ -174,6 +186,61 @@ export default function ImageEditorModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isMobile = window.innerWidth < 1024; // lg breakpoint
+      setShowTrashIcon(isMobile && selectedElementId !== null);
+    };
+
+    checkScreenSize();
+    window.addEventListener("resize", checkScreenSize);
+
+    return () => window.removeEventListener("resize", checkScreenSize);
+  }, [selectedElementId]);
+
+  // Delete element handler
+  const handleDeleteElement = useCallback(
+    (elementId: string, elementType: string) => {
+      switch (elementType) {
+        case "rectangle":
+          setRectangles((prev) => prev.filter((rect) => rect.id !== elementId));
+          break;
+        case "circle":
+          setCircles((prev) =>
+            prev.filter((circle) => circle.id !== elementId)
+          );
+          break;
+        case "arrow":
+          setArrows((prev) => prev.filter((arrow) => arrow.id !== elementId));
+          break;
+        case "double-arrow":
+          setDoubleArrows((prev) =>
+            prev.filter((arrow) => arrow.id !== elementId)
+          );
+          break;
+        case "text":
+          setTexts((prev) => prev.filter((text) => text.id !== elementId));
+          break;
+      }
+
+      // Reset selection and hide trash
+      setSelectedElementId(null);
+      setSelectedElementType(null);
+      setShowTrashIcon(false);
+      setIsDraggedOverTrash(false);
+
+      // Save to history
+      saveHistory();
+
+      toast({
+        title: "Element Deleted",
+        description: "The selected element has been removed.",
+        duration: 2000,
+      });
+    },
+    [toast, saveHistory]
+  );
 
   const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
@@ -493,8 +560,6 @@ export default function ImageEditorModal({
     setTexts([]);
     saveHistory();
   }, []);
-
-  const { toast } = useToast();
 
   const drawImageOnCanvas = useCallback(() => {
     const baseCanvas = baseCanvasRef.current;
@@ -1786,7 +1851,8 @@ export default function ImageEditorModal({
             </div>
           </div>
 
-          <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative">
+          {/* Canvas area */}
+          <div className="flex-1 flex items-center justify-center bg-gray-100 min-h-0 relative overflow-hidden">
             <div
               className="relative border-2 border-gray-300 w-full h-full lg:w-[420px] lg:h-[750px]"
               id="drawing-canvas"
@@ -1826,6 +1892,14 @@ export default function ImageEditorModal({
                   rectangles={rectangles}
                   setRectangles={setRectangles}
                   onFlatten={handleKonvaRectFlatten}
+                  onElementSelect={(id, type) => {
+                    setSelectedElementId(id);
+                    setSelectedElementType(type);
+                  }}
+                  onElementDeselect={() => {
+                    setSelectedElementId(null);
+                    setSelectedElementType(null);
+                  }}
                 />
               )}
 
@@ -1863,6 +1937,14 @@ export default function ImageEditorModal({
                   backgroundColor={backgroundColor}
                   setCircles={setCircles} // Use history-aware setter
                   onFlatten={handleKonvaCircleFlatten}
+                  onElementSelect={(id, type) => {
+                    setSelectedElementId(id);
+                    setSelectedElementType(type);
+                  }}
+                  onElementDeselect={() => {
+                    setSelectedElementId(null);
+                    setSelectedElementType(null);
+                  }}
                 />
               )}
 
@@ -1878,6 +1960,14 @@ export default function ImageEditorModal({
                   arrows={arrows}
                   setArrows={setArrows} // Use history-aware setter
                   onFlatten={handleKonvaArrowFlatten}
+                  onElementSelect={(id, type) => {
+                    setSelectedElementId(id);
+                    setSelectedElementType(type);
+                  }}
+                  onElementDeselect={() => {
+                    setSelectedElementId(null);
+                    setSelectedElementType(null);
+                  }}
                 />
               )}
 
@@ -1893,6 +1983,14 @@ export default function ImageEditorModal({
                   arrows={doubleArrows}
                   setArrows={setDoubleArrows} // Use history-aware setter
                   onFlatten={handleKonvaDoubleArrowFlatten}
+                  onElementSelect={(id, type) => {
+                    setSelectedElementId(id);
+                    setSelectedElementType(type);
+                  }}
+                  onElementDeselect={() => {
+                    setSelectedElementId(null);
+                    setSelectedElementType(null);
+                  }}
                 />
               )}
 
@@ -1909,7 +2007,49 @@ export default function ImageEditorModal({
                   texts={texts}
                   setTexts={setTexts}
                   onFlatten={handleTextFlatten}
+                  onElementSelect={(id, type) => {
+                    setSelectedElementId(id);
+                    setSelectedElementType(type);
+                  }}
+                  onElementDeselect={() => {
+                    setSelectedElementId(null);
+                    setSelectedElementType(null);
+                  }}
                 />
+              )}
+
+              {/* Trash Icon Overlay - Only visible on mobile when element is selected */}
+              {showTrashIcon && (
+                <div
+                  id="trash-zone"
+                  className={`fixed bottom-56 right-4 z-[9999] p-3 rounded-full shadow-lg border-2 transition-all duration-200 text-white ${
+                    isDraggedOverTrash
+                      ? "bg-red-600 border-red-700 scale-125"
+                      : "bg-red-500 border-red-600 hover:bg-red-600 hover:scale-110"
+                  }`}
+                  style={{
+                    background: isDraggedOverTrash
+                      ? "linear-gradient(135deg, #dc2626, #b91c1c)"
+                      : "linear-gradient(135deg, #ef4444, #dc2626)",
+                    boxShadow: isDraggedOverTrash
+                      ? "0 6px 20px rgba(239, 68, 68, 0.6)"
+                      : "0 4px 15px rgba(239, 68, 68, 0.4)",
+                    zIndex: 9999,
+                  }}
+                >
+                  <Trash2
+                    className={`h-6 w-6 transition-transform duration-200 ${
+                      isDraggedOverTrash ? "scale-110" : ""
+                    }`}
+                  />
+
+                  {/* Tooltip */}
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+                    {isDraggedOverTrash
+                      ? "Release to delete"
+                      : "Drag here to delete"}
+                  </div>
+                </div>
               )}
             </div>
           </div>

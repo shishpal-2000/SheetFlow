@@ -16,6 +16,8 @@ To get started, take a look at src/app/page.tsx.
 - [ ] The curve should be smooth automatically after finishing the curve
 - [ ] Add options in crop to select the area to crop in aspect-ratios - 3:4, 9:16 etc
 - [ ] Add a camera button in mobile view to take a photo and use it as an image
+- [ ] Arrow and Double arrow tools should rotate and resize with pinch/zoom gestures
+- [ ] Arrow and Double arrow tools should be draggable easily
 
 **Bugs**
 
