@@ -17,6 +17,7 @@ export interface KonvaRectangle {
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
+  rotation: number;
 }
 
 interface KonvaRectangleProps {
@@ -76,10 +77,20 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
     // Drawing logic
     const handleMouseDown = (e: any) => {
       if (!active) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       // Only draw if not clicking on an existing rect
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
+
+      // Get pointer position (works for both mouse and touch)
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       const id = `rect-${Date.now()}`;
       setNewRect({
         id,
@@ -90,13 +101,22 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         stroke: color,
         strokeWidth: brushSize,
         draggable: true,
+        rotation: 0,
       });
       setSelectedId(id);
     };
 
     const handleMouseMove = (e: any) => {
       if (!active || !newRect) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       const pos = e.target.getStage().getPointerPosition();
+      if (!pos) return;
+
       setNewRect({
         ...newRect,
         width: Math.abs(pos.x - newRect.x),
@@ -106,8 +126,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       });
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: any) => {
       if (!active || !newRect) return;
+
+      // Prevent default behavior for touch events
+      if (e.evt) {
+        e.evt.preventDefault();
+      }
+
       setRectangles((rects) => [...rects, newRect]);
       setNewRect(null);
     };
@@ -127,6 +153,8 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       const node = e.target;
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
+      const rotation = node.rotation();
+
       node.scaleX(1);
       node.scaleY(1);
       setRectangles((rects) =>
@@ -138,6 +166,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
                 y: node.y(),
                 width: Math.max(5, node.width() * scaleX),
                 height: Math.max(5, node.height() * scaleY),
+                rotation: rotation,
               }
             : r
         )
@@ -157,9 +186,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           zIndex: 30,
           pointerEvents: active ? "auto" : "none",
         }}
+        // Mouse Event (Desktop)
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        // Touch Event (Mobile)
+        onTouchStart={handleMouseDown}
+        onTouchMove={handleMouseMove}
+        onTouchEnd={handleMouseUp}
       >
         <Layer>
           {rectangles.map((rect) => (
@@ -173,6 +207,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               stroke={rect.stroke}
               strokeWidth={rect.strokeWidth}
               draggable={rect.draggable}
+              rotation={rect.rotation}
               onClick={() => handleRectClick(rect.id)}
               onTap={() => handleRectClick(rect.id)}
               onDragEnd={(e) => handleDragEnd(e, rect.id)}
@@ -198,6 +233,10 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               "top-right",
               "bottom-left",
               "bottom-right",
+              "middle-left",
+              "middle-right",
+              "top-center",
+              "bottom-center",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}

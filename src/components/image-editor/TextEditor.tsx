@@ -1,4 +1,5 @@
 "use client";
+import { set } from "date-fns";
 import React, {
   useRef,
   useState,
@@ -6,7 +7,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Stage, Layer, Text, Transformer } from "react-konva";
+import { Stage, Layer, Text, Transformer, Group, Rect } from "react-konva";
 
 export interface KonvaTextShape {
   id: string;
@@ -16,7 +17,10 @@ export interface KonvaTextShape {
   fontSize: number;
   fontFamily: string;
   fill: string;
+  backgroundColor: string;
   draggable: boolean;
+  scaleX?: number;
+  scaleY?: number;
 }
 
 interface TextEditorProps {
@@ -24,6 +28,7 @@ interface TextEditorProps {
   height: number;
   active: boolean;
   color: string;
+  backgroundColor: string;
   fontSize: number;
   fontFamily: string;
   texts: KonvaTextShape[];
@@ -42,6 +47,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       height,
       active,
       color,
+      backgroundColor,
       fontSize,
       fontFamily,
       texts,
@@ -56,10 +62,20 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       x: number;
       y: number;
       value: string;
+      fill: string;
+      backgroundColor: string;
     } | null>(null);
 
     const stageRef = useRef<any>(null);
     const trRef = useRef<any>(null);
+
+    // Add state for tracking pinch gesture
+    const [lastDist, setLastDist] = useState<number>(0);
+
+    // Helper function to get distance between two touches
+    const getDistance = (p1: any, p2: any) => {
+      return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+    };
 
     useImperativeHandle(ref, () => ({
       flatten: () => {
@@ -100,13 +116,56 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
 
     // Double-click on existing text to edit
     const handleDblClick = (e: any, id: string) => {
-      const textNode = e.target;
+      const group = e.target.getParent();
+      const textNode = group.findOne("Text");
+      const rectNode = group.findOne("Rect");
+
       setEditingText({
         id,
-        x: textNode.x(),
-        y: textNode.y(),
+        x: group.x(),
+        y: group.y(),
         value: textNode.text(),
+        fill: textNode.fill(),
+        backgroundColor: rectNode.fill(),
       });
+    };
+
+    // Touch handlers for pinch zoom
+    const handleTouchMove = (e: any) => {
+      if (!active || !selectedId) return;
+
+      const touch1 = e.evt.touches[0];
+      const touch2 = e.evt.touches[1];
+
+      if (touch1 && touch2) {
+        e.evt.preventDefault();
+
+        const dist = getDistance(
+          { x: touch1.clientX, y: touch1.clientY },
+          { x: touch2.clientX, y: touch2.clientY }
+        );
+
+        if (lastDist > 0) {
+          const scale = dist / lastDist;
+
+          setTexts((arr) =>
+            arr.map((t) =>
+              t.id === selectedId
+                ? {
+                    ...t,
+                    scaleX: (t.scaleX || 1) * scale,
+                    scaleY: (t.scaleY || 1) * scale,
+                  }
+                : t
+            )
+          );
+        }
+        setLastDist(dist);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setLastDist(0);
     };
 
     // Double-click on empty canvas to add new text
@@ -119,6 +178,8 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
         x: pos.x,
         y: pos.y,
         value: "",
+        fill: color,
+        backgroundColor: backgroundColor,
       });
     };
 
@@ -136,7 +197,8 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
             zIndex: 1000,
             minWidth: 50,
             minHeight: 24,
-            background: "white",
+            background: backgroundColor,
+            color: color,
             border: "1px solid #ccc",
             padding: 2,
           }}
@@ -152,7 +214,12 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                 setTexts((arr) =>
                   arr.map((t) =>
                     t.id === editingText.id
-                      ? { ...t, text: editingText.value }
+                      ? {
+                          ...t,
+                          text: editingText.value,
+                          fill: color,
+                          backgroundColor: backgroundColor,
+                        }
                       : t
                   )
                 );
@@ -168,6 +235,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                     fontSize,
                     fontFamily,
                     fill: color,
+                    backgroundColor: backgroundColor,
                     draggable: true,
                   },
                 ]);
@@ -203,25 +271,64 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
             pointerEvents: active ? "auto" : "none",
           }}
           onDblClick={handleStageDblClick}
+          onTouchMove={handleTouchMove} // Add pinch zoom
+          onTouchEnd={handleTouchEnd}
+          onClick={(e) => {
+            // Clear selection when clicking on empty space
+            if (e.target === e.target.getStage()) {
+              setSelectedId(null);
+            }
+          }}
         >
           <Layer>
-            {texts.map((t) => (
-              <Text
-                key={t.id}
-                id={t.id}
-                x={t.x}
-                y={t.y}
-                text={t.text}
-                fontSize={t.fontSize}
-                fontFamily={t.fontFamily}
-                fill={t.fill}
-                draggable={t.draggable}
-                onClick={() => setSelectedId(t.id)}
-                onTap={() => setSelectedId(t.id)}
-                onDblClick={(e) => handleDblClick(e, t.id)}
-                onDragEnd={(e) => handleDragEnd(e, t.id)}
-              />
-            ))}
+            {texts.map((t) => {
+              // Create a text node to measure dimensions
+              const textNode = document.createElement("span");
+              textNode.innerText = t.text;
+              textNode.style.fontSize = `${t.fontSize}px`;
+              textNode.style.fontFamily = t.fontFamily;
+              textNode.style.position = "absolute";
+              textNode.style.visibility = "hidden";
+              document.body.appendChild(textNode);
+
+              // Get dimensions with padding
+              const padding = 10;
+              const width = textNode.offsetWidth + padding * 2;
+              const height = textNode.offsetHeight + padding * 2;
+
+              document.body.removeChild(textNode);
+
+              return (
+                <Group
+                  key={t.id}
+                  id={t.id}
+                  x={t.x}
+                  y={t.y}
+                  scaleX={t.scaleX || 1}
+                  scaleY={t.scaleY || 1}
+                  draggable={t.draggable}
+                  onClick={() => setSelectedId(t.id)}
+                  onTap={() => setSelectedId(t.id)}
+                  onDblClick={(e) => handleDblClick(e, t.id)}
+                  onDragEnd={(e) => handleDragEnd(e, t.id)}
+                >
+                  <Rect
+                    width={width}
+                    height={height}
+                    fill={t.backgroundColor}
+                    cornerRadius={10}
+                  />
+                  <Text
+                    text={t.text}
+                    fontSize={t.fontSize}
+                    fontFamily={t.fontFamily}
+                    fill={t.fill}
+                    x={padding}
+                    y={padding}
+                  />
+                </Group>
+              );
+            })}
             <Transformer
               ref={trRef}
               rotateEnabled={false}

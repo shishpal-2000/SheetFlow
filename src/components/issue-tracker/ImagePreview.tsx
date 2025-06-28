@@ -24,7 +24,7 @@ export default function ImagePreview({ image, onRemove, onOpenImageEditor }: Ima
         className="object-cover w-full h-full"
         data-ai-hint="issue image"
       />
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col gap-1">
+      <div className="absolute top-1 right-1 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200 flex flex-col gap-1">
         <Button
             variant="destructive"
             size="icon"

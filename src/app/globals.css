@@ -131,3 +131,7 @@ body {
   border-radius: 1px;
 }
 
+.konvajs-content {
+  touch-action: none;;
+}
+
