@@ -16,6 +16,7 @@ export interface KonvaCircleShape {
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
+  fill?: string; // Optional fill color prop
 }
 
 interface KonvaCircleProps {
@@ -24,6 +25,7 @@ interface KonvaCircleProps {
   active: boolean;
   color: string;
   brushSize: number;
+  backgroundColor?: string; // Optional background color prop
   circles: KonvaCircleShape[];
   setCircles: React.Dispatch<React.SetStateAction<KonvaCircleShape[]>>;
   onFlatten: (circles: KonvaCircleShape[]) => void;
@@ -35,7 +37,17 @@ export interface KonvaCircleHandle {
 
 const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
   (
-    { width, height, active, color, brushSize, circles, setCircles, onFlatten },
+    {
+      width,
+      height,
+      active,
+      color,
+      brushSize,
+      backgroundColor,
+      circles,
+      setCircles,
+      onFlatten,
+    },
     ref
   ) => {
     const [newCircle, setNewCircle] = useState<KonvaCircleShape | null>(null);
@@ -87,6 +99,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         stroke: color,
         strokeWidth: brushSize,
         draggable: true,
+        fill: backgroundColor || undefined,
       });
       setSelectedId(id);
     };
@@ -160,6 +173,17 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     };
 
     useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
+          setCircles((cs) => cs.filter((c) => c.id !== selectedId));
+          setSelectedId(null);
+        }
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedId]);
+
+    useEffect(() => {
       if (trRef.current && selectedId && stageRef.current) {
         const node = stageRef.current.findOne(`#${selectedId}`);
         if (node) {
@@ -171,6 +195,23 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         trRef.current.getLayer().batchDraw();
       }
     }, [selectedId, circles]);
+
+    // Update selected circle's color/backgroundColor when props change
+    useEffect(() => {
+      if (selectedId) {
+        setCircles((cs) =>
+          cs.map((c) =>
+            c.id === selectedId
+              ? {
+                  ...c,
+                  stroke: color,
+                  fill: backgroundColor || undefined,
+                }
+              : c
+          )
+        );
+      }
+    }, [color, backgroundColor, selectedId]);
 
     return (
       <Stage
@@ -218,6 +259,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               stroke={circle.stroke}
               strokeWidth={circle.strokeWidth}
               draggable={circle.draggable}
+              fill={circle.fill}
               onClick={() => handleCircleClick(circle.id)}
               onTap={() => handleCircleClick(circle.id)}
               onDragEnd={(e) => handleDragEnd(e, circle.id)}
@@ -232,6 +274,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               stroke={newCircle.stroke}
               strokeWidth={newCircle.strokeWidth}
               dash={[4, 4]}
+              fill={newCircle.fill}
             />
           )}
           <Transformer
