@@ -82,12 +82,15 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     // Transformer selection
     useEffect(() => {
-      if (trRef.current && selectedId) {
+      if (trRef.current && selectedId && stageRef.current) {
         const node = stageRef.current.findOne(`#${selectedId}`);
         if (node) {
           trRef.current.nodes([node]);
           trRef.current.getLayer().batchDraw();
         }
+      } else if (trRef.current) {
+        trRef.current.nodes([]);
+        trRef.current.getLayer().batchDraw();
       }
     }, [selectedId, rectangles]);
 
@@ -331,7 +334,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           )}
           <Transformer
             ref={trRef}
-            rotateEnabled={false}
+            rotateEnabled={true}
             enabledAnchors={[
               "top-left",
               "top-right",
