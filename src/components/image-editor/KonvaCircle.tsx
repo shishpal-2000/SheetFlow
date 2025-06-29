@@ -7,6 +7,8 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Stage, Layer, Circle, Transformer } from "react-konva";
+import { StrokeStyle } from "./ImageEditorModal";
+import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaCircleShape {
   id: string;
@@ -16,6 +18,7 @@ export interface KonvaCircleShape {
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
+  dash?: number[]; // Optional dash pattern for stroke
   fill?: string; // Optional fill color prop
 }
 
@@ -25,6 +28,7 @@ interface KonvaCircleProps {
   active: boolean;
   color: string;
   brushSize: number;
+  strokeStyle: StrokeStyle;
   backgroundColor?: string; // Optional background color prop
   circles: KonvaCircleShape[];
   setCircles: React.Dispatch<React.SetStateAction<KonvaCircleShape[]>>;
@@ -45,6 +49,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       active,
       color,
       brushSize,
+      strokeStyle,
       backgroundColor,
       circles,
       setCircles,
@@ -103,6 +108,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         stroke: color,
         strokeWidth: brushSize,
         draggable: true,
+        dash: getDashPattern(strokeStyle, brushSize),
         fill:
           backgroundColor && backgroundColor !== "transparent"
             ? backgroundColor
@@ -228,7 +234,8 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               ? {
                   ...c,
                   stroke: color,
-                  // Only update fill if backgroundColor is provided and not empty/transparent, otherwise keep existing fill
+                  strokeWidth: brushSize,
+                  dash: getDashPattern(strokeStyle, brushSize),
                   ...(backgroundColor &&
                     backgroundColor !== "transparent" && {
                       fill: backgroundColor,
@@ -238,7 +245,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
           )
         );
       }
-    }, [color, backgroundColor, selectedId]);
+    }, [color, backgroundColor, selectedId, strokeStyle, brushSize]);
 
     return (
       <Stage
@@ -291,6 +298,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               radius={circle.radius}
               stroke={circle.stroke}
               strokeWidth={circle.strokeWidth}
+              dash={circle.dash}
               draggable={circle.draggable}
               fill={circle.fill}
               onClick={() => handleCircleClick(circle.id)}
@@ -306,7 +314,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               radius={newCircle.radius}
               stroke={newCircle.stroke}
               strokeWidth={newCircle.strokeWidth}
-              dash={[4, 4]}
+              dash={newCircle.dash}
               fill={newCircle.fill}
             />
           )}

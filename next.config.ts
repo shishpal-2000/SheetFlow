@@ -20,10 +20,6 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  // Ensure components using Konva are client-side only
-  experimental: {
-    esmExternals: "loose",
-  },
 
   typescript: {
     ignoreBuildErrors: true,

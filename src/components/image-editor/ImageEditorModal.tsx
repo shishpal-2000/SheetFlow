@@ -92,7 +92,7 @@ interface CropArea {
   height: number;
 }
 
-export type StrokeStyle = "solid" | "dashed" | "dotted" | "double";
+export type StrokeStyle = "solid" | "dashed" | "dotted";
 type FontFamily = "sans-serif" | "serif" | "monospace" | "cursive" | "fantasy";
 
 export interface Point {
@@ -264,6 +264,13 @@ export default function ImageEditorModal({
       ctx.lineWidth = r.strokeWidth;
       ctx.fillStyle = r.fill || "transparent";
 
+      // Apply dash pattern based on stroke style
+      if (r.dash && r.dash.length > 0) {
+        ctx.setLineDash(r.dash);
+      } else {
+        ctx.setLineDash([]);
+      }
+
       if (r.rotation) {
         // For rectangles with rotation
         const centerX = r.x + r.width / 2;
@@ -331,9 +338,6 @@ export default function ImageEditorModal({
             break;
           case "dotted":
             ctx.setLineDash([brushSize, brushSize]);
-            break;
-          case "double":
-            ctx.setLineDash([]);
             break;
         }
 
@@ -437,9 +441,6 @@ export default function ImageEditorModal({
           case "dotted":
             ctx.setLineDash([brushSize, brushSize]);
             break;
-          case "double":
-            ctx.setLineDash([]);
-            break;
         }
 
         ctx.beginPath();
@@ -486,6 +487,14 @@ export default function ImageEditorModal({
         ctx.save();
         ctx.strokeStyle = c.stroke;
         ctx.lineWidth = c.strokeWidth ?? 1;
+
+        // Apply dash pattern based on stroke style
+        if (c.dash && c.dash.length > 0) {
+          ctx.setLineDash(c.dash);
+        } else {
+          ctx.setLineDash([]);
+        }
+
         ctx.beginPath();
         ctx.arc(c.x, c.y, c.radius, 0, 2 * Math.PI);
         if (c.fill && c.fill !== "transparent") {
@@ -966,11 +975,6 @@ export default function ImageEditorModal({
         ctx.setLineDash([brushSize, brushSize]);
         ctx.lineWidth = brushSize;
         break;
-      case "double":
-        // For double lines, we'll draw two parallel lines
-        ctx.setLineDash([]);
-        ctx.lineWidth = brushSize / 2;
-        break;
     }
   };
 
@@ -985,72 +989,19 @@ export default function ImageEditorModal({
     configureStrokeStyle(ctx);
 
     if (shape === "line") {
-      if (strokeStyle === "double") {
-        // Draw two parallel lines
-        const angle = Math.atan2(end.y - start.y, end.x - start.x);
-        const offset = brushSize / 2;
-
-        // First line
-        ctx.beginPath();
-        ctx.moveTo(
-          start.x + Math.cos(angle + Math.PI / 2) * offset,
-          start.y + Math.sin(angle + Math.PI / 2) * offset
-        );
-        ctx.lineTo(
-          end.x + Math.cos(angle + Math.PI / 2) * offset,
-          end.y + Math.sin(angle + Math.PI / 2) * offset
-        );
-        ctx.stroke();
-
-        // Second line
-        ctx.beginPath();
-        ctx.moveTo(
-          start.x + Math.cos(angle - Math.PI / 2) * offset,
-          start.y + Math.sin(angle - Math.PI / 2) * offset
-        );
-        ctx.lineTo(
-          end.x + Math.cos(angle - Math.PI / 2) * offset,
-          end.y + Math.sin(angle - Math.PI / 2) * offset
-        );
-        ctx.stroke();
-      } else {
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(end.x, end.y);
-        ctx.stroke();
-      }
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.stroke();
     } else if (shape === "rectangle") {
-      if (strokeStyle === "double") {
-        // Draw outer rectangle
-        ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
-        // Draw inner rectangle
-        const offset = brushSize;
-        ctx.strokeRect(
-          start.x + offset,
-          start.y + offset,
-          end.x - start.x - 2 * offset,
-          end.y - start.y - 2 * offset
-        );
-      } else {
-        ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
-      }
+      ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
     } else if (shape === "circle") {
       const radius = Math.sqrt(
         Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
       );
-      if (strokeStyle === "double") {
-        // Draw outer circle
-        ctx.beginPath();
-        ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-        ctx.stroke();
-        // Draw inner circle
-        ctx.beginPath();
-        ctx.arc(start.x, start.y, radius - brushSize, 0, Math.PI * 2);
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+
+      ctx.beginPath();
+      ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
     }
 
     // Reset line dash to default
@@ -1430,7 +1381,7 @@ export default function ImageEditorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex flex-col lg:max-w-5xl h-[95vh] p-0 overflow-hidden">
+      <DialogContent className="flex flex-col lg:max-w-5xl h-[95vh] p-0 overflow-y-auto">
         <DialogHeader className="p-4 border-b hidden sm:block">
           <DialogTitle>Edit Image: {image.name}</DialogTitle>
         </DialogHeader>
@@ -1798,15 +1749,6 @@ export default function ImageEditorModal({
                           <DotIcon className="w-4 h-4 mr-2" /> Dotted
                         </div>
                       </SelectItem>
-                      <SelectItem value="double">
-                        <div className="flex items-center">
-                          <div className="w-4 h-4 mr-2 flex flex-col justify-center gap-0.5">
-                            <div className="w-full border-t" />
-                            <div className="w-full border-t" />
-                          </div>
-                          Double
-                        </div>
-                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1926,6 +1868,7 @@ export default function ImageEditorModal({
                   active={activeTool === "rectangle"}
                   color={currentColor}
                   brushSize={brushSize}
+                  strokeStyle={strokeStyle}
                   backgroundColor={backgroundColor}
                   rectangles={rectangles}
                   setRectangles={setRectangles}
@@ -1973,6 +1916,7 @@ export default function ImageEditorModal({
                   active={activeTool === "circle"}
                   color={currentColor}
                   brushSize={brushSize}
+                  strokeStyle={strokeStyle}
                   circles={circles}
                   backgroundColor={backgroundColor}
                   setCircles={setCircles} // Use history-aware setter

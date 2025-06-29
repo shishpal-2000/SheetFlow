@@ -76,6 +76,10 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
     // Add state for tracking pinch gesture
     const [lastDist, setLastDist] = useState<number>(0);
 
+    const [lastTap, setLastTap] = useState<number>(0);
+    const [tapTimeout, setTapTimeout] = useState<NodeJS.Timeout | null>(null);
+    const [tapCount, setTapCount] = useState<number>(0);
+
     // Helper function to get distance between two touches
     const getDistance = (p1: any, p2: any) => {
       return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -114,6 +118,42 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
         }
       }
     }, [selectedId, texts]);
+
+    // const handleDoubleTap = (e: any, id: string) => {
+    //   const now = Date.now();
+    //   const DOUBLE_TAP_DELAY = 300; // milliseconds
+
+    //   if (tapTimeout) {
+    //     clearTimeout(tapTimeout);
+    //     setTapTimeout(null);
+    //   }
+
+    //   if (now - lastTap < DOUBLE_TAP_DELAY) {
+    //     // Double tap detected
+    //     setTapCount(0);
+    //     setLastTap(0);
+    //     handleDblClick(e, id);
+    //   } else {
+    //     // First tap
+    //     setLastTap(now);
+    //     setTapCount(1);
+
+    //     // Set a timeout to reset if no second tap
+    //     const timeout = setTimeout(() => {
+    //       setTapCount(0);
+    //       setLastTap(0);
+    //       setTapTimeout(null);
+    //     }, DOUBLE_TAP_DELAY);
+
+    //     setTapTimeout(timeout);
+
+    //     // Still handle normal selection
+    //     setSelectedId(id);
+    //     if (onElementSelect) {
+    //       onElementSelect(id, "text");
+    //     }
+    //   }
+    // };
 
     // Drag handler
     const handleDragEnd = (e: any, id: string) => {
@@ -365,11 +405,12 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                       onElementSelect(t.id, "text");
                     }
                   }}
-                  onTap={() => {
+                  onTap={(e) => {
                     setSelectedId(t.id);
                     if (onElementSelect) {
                       onElementSelect(t.id, "text");
                     }
+                    // handleDoubleTap(e, t.id);
                   }}
                   onDblClick={(e) => handleDblClick(e, t.id)}
                   onDragEnd={(e) => handleDragEnd(e, t.id)}
