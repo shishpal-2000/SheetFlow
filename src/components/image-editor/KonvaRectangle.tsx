@@ -7,6 +7,8 @@ import React, {
   useImperativeHandle,
 } from "react";
 import { Stage, Layer, Rect, Transformer } from "react-konva";
+import { StrokeStyle } from "./ImageEditorModal";
+import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaRectangle {
   id: string;
@@ -17,6 +19,7 @@ export interface KonvaRectangle {
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
+  dash?: number[]; // Optional dash pattern for stroke
   rotation: number;
   fill?: string; // Optional fill color for the rectangle
 }
@@ -27,6 +30,7 @@ interface KonvaRectangleProps {
   active: boolean;
   color: string;
   brushSize: number;
+  strokeStyle: StrokeStyle;
   backgroundColor?: string;
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
@@ -49,6 +53,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       active,
       color,
       brushSize,
+      strokeStyle,
       backgroundColor,
       onFlatten,
       onElementSelect,
@@ -116,7 +121,8 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               ? {
                   ...r,
                   stroke: color,
-                  // Only update fill if backgroundColor is provided, otherwise keep existing fill
+                  strokeWidth: brushSize,
+                  dash: getDashPattern(strokeStyle, brushSize),
                   ...(backgroundColor !== undefined && {
                     fill: backgroundColor,
                   }),
@@ -125,7 +131,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           )
         );
       }
-    }, [color, backgroundColor, selectedId]);
+    }, [color, backgroundColor, selectedId, strokeStyle, brushSize]);
 
     // Drawing logic
     const handleMouseDown = (e: any) => {
@@ -155,6 +161,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         strokeWidth: brushSize,
         draggable: true,
         rotation: 0,
+        dash: getDashPattern(strokeStyle, brushSize),
         fill: backgroundColor || undefined,
       });
       setSelectedId(id);
@@ -382,6 +389,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               height={rect.height}
               stroke={rect.stroke}
               strokeWidth={rect.strokeWidth}
+              dash={rect.dash}
               draggable={rect.draggable}
               rotation={rect.rotation}
               fill={rect.fill}
@@ -400,7 +408,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               height={newRect.height}
               stroke={newRect.stroke}
               strokeWidth={newRect.strokeWidth}
-              dash={[4, 4]}
+              dash={newRect.dash}
               fill={newRect.fill}
             />
           )}

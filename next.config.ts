@@ -1,7 +1,26 @@
-import type {NextConfig} from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Exclude canvas from client-side bundle
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        canvas: false,
+        fs: false,
+      };
+    }
+
+    // Ignore canvas module for client-side builds
+    config.externals = config.externals || [];
+    config.externals.push({
+      canvas: "canvas",
+    });
+
+    return config;
+  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -11,10 +30,10 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
       },
     ],
   },

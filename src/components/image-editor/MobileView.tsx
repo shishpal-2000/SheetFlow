@@ -537,15 +537,6 @@ const MobileView = ({
                     <DotIcon className="w-4 h-4 mr-2" /> Dotted
                   </div>
                 </SelectItem>
-                <SelectItem value="double">
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 mr-2 flex flex-col justify-center gap-0.5">
-                      <div className="w-full border-t" />
-                      <div className="w-full border-t" />
-                    </div>
-                    Double
-                  </div>
-                </SelectItem>
               </SelectContent>
             </Select>
           </div>
