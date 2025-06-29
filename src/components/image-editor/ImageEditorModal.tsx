@@ -23,7 +23,6 @@ import type {
   KonvaDoubleArrowShape,
 } from "./KonvaDoubleArrow";
 
-import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
   DialogContent,
@@ -198,49 +197,6 @@ export default function ImageEditorModal({
 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, [selectedElementId]);
-
-  // Delete element handler
-  const handleDeleteElement = useCallback(
-    (elementId: string, elementType: string) => {
-      switch (elementType) {
-        case "rectangle":
-          setRectangles((prev) => prev.filter((rect) => rect.id !== elementId));
-          break;
-        case "circle":
-          setCircles((prev) =>
-            prev.filter((circle) => circle.id !== elementId)
-          );
-          break;
-        case "arrow":
-          setArrows((prev) => prev.filter((arrow) => arrow.id !== elementId));
-          break;
-        case "double-arrow":
-          setDoubleArrows((prev) =>
-            prev.filter((arrow) => arrow.id !== elementId)
-          );
-          break;
-        case "text":
-          setTexts((prev) => prev.filter((text) => text.id !== elementId));
-          break;
-      }
-
-      // Reset selection and hide trash
-      setSelectedElementId(null);
-      setSelectedElementType(null);
-      setShowTrashIcon(false);
-      setIsDraggedOverTrash(false);
-
-      // Save to history
-      saveHistory();
-
-      toast({
-        title: "Element Deleted",
-        description: "The selected element has been removed.",
-        duration: 2000,
-      });
-    },
-    [toast, saveHistory]
-  );
 
   const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
@@ -492,81 +448,84 @@ export default function ImageEditorModal({
     []
   );
 
-  const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
-    if (!drawingCanvasRef.current) return;
-    const ctx = drawingCanvasRef.current.getContext("2d");
-    if (!ctx) return;
+  const handleTextFlatten = useCallback(
+    (textShapes: KonvaTextShape[]) => {
+      if (!drawingCanvasRef.current) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
 
-    textShapes.forEach((t) => {
-      ctx.save();
+      textShapes.forEach((t) => {
+        ctx.save();
 
-      // Apply scaling transformations
-      const scaleX = t.scaleX || 1;
-      const scaleY = t.scaleY || 1;
+        // Apply scaling transformations
+        const scaleX = t.scaleX || 1;
+        const scaleY = t.scaleY || 1;
 
-      // Calculate scaled font size and padding
-      const scaledFontSize = t.fontSize * scaleY;
-      const padding = 10 * Math.min(scaleX, scaleY); // Use minimum scale for consistent padding
+        // Calculate scaled font size and padding
+        const scaledFontSize = t.fontSize * scaleY;
+        const padding = 10 * Math.min(scaleX, scaleY); // Use minimum scale for consistent padding
 
-      // Create a temporary element to measure text dimensions with scaled font
-      const textNode = document.createElement("span");
-      textNode.innerText = t.text;
-      textNode.style.fontSize = `${scaledFontSize}px`;
-      textNode.style.fontFamily = t.fontFamily;
-      textNode.style.position = "absolute";
-      textNode.style.visibility = "hidden";
-      document.body.appendChild(textNode);
+        // Create a temporary element to measure text dimensions with scaled font
+        const textNode = document.createElement("span");
+        textNode.innerText = t.text;
+        textNode.style.fontSize = `${scaledFontSize}px`;
+        textNode.style.fontFamily = t.fontFamily;
+        textNode.style.position = "absolute";
+        textNode.style.visibility = "hidden";
+        document.body.appendChild(textNode);
 
-      // Get dimensions with scaled padding
-      const width = (textNode.offsetWidth + padding * 2) * scaleX;
-      const height = (textNode.offsetHeight + padding * 2) * scaleY;
+        // Get dimensions with scaled padding
+        const width = (textNode.offsetWidth + padding * 2) * scaleX;
+        const height = (textNode.offsetHeight + padding * 2) * scaleY;
 
-      document.body.removeChild(textNode);
+        document.body.removeChild(textNode);
 
-      // Draw background with rounded corners if specified
-      if (t.backgroundColor && t.backgroundColor !== "transparent") {
-        ctx.fillStyle = t.backgroundColor;
+        // Draw background with rounded corners if specified
+        if (t.backgroundColor && t.backgroundColor !== "transparent") {
+          ctx.fillStyle = t.backgroundColor;
 
-        // Draw rounded rectangle with scaling
-        const radius = 10 * Math.min(scaleX, scaleY); // Scale the radius
-        const x = t.x;
-        const y = t.y;
+          // Draw rounded rectangle with scaling
+          const radius = 10 * Math.min(scaleX, scaleY); // Scale the radius
+          const x = t.x;
+          const y = t.y;
 
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + width - radius, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.quadraticCurveTo(
-          x + width,
-          y + height,
-          x + width - radius,
-          y + height
-        );
-        ctx.lineTo(x + radius, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
-        ctx.fill();
-      }
+          ctx.beginPath();
+          ctx.moveTo(x + radius, y);
+          ctx.lineTo(x + width - radius, y);
+          ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+          ctx.lineTo(x + width, y + height - radius);
+          ctx.quadraticCurveTo(
+            x + width,
+            y + height,
+            x + width - radius,
+            y + height
+          );
+          ctx.lineTo(x + radius, y + height);
+          ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+          ctx.lineTo(x, y + radius);
+          ctx.quadraticCurveTo(x, y, x + radius, y);
+          ctx.closePath();
+          ctx.fill();
+        }
 
-      // Draw text on top of background with scaling
-      ctx.font = `${scaledFontSize}px ${t.fontFamily}`;
-      ctx.fillStyle = t.fill;
+        // Draw text on top of background with scaling
+        ctx.font = `${scaledFontSize}px ${t.fontFamily}`;
+        ctx.fillStyle = t.fill;
 
-      // Position text with scaled padding and baseline adjustment
-      const textX = t.x + padding;
-      const textY = t.y + padding + scaledFontSize;
+        // Position text with scaled padding and baseline adjustment
+        const textX = t.x + padding;
+        const textY = t.y + padding + scaledFontSize;
 
-      ctx.fillText(t.text, textX, textY);
+        ctx.fillText(t.text, textX, textY);
 
-      ctx.restore();
-    });
+        ctx.restore();
+      });
 
-    setTexts([]);
-    saveHistory();
-  }, []);
+      setTexts([]);
+      saveHistory();
+    },
+    [saveHistory, drawingCanvasRef, setTexts]
+  );
 
   const checkTrashZoneCollision = useCallback(
     (screenX: number, screenY: number) => {
