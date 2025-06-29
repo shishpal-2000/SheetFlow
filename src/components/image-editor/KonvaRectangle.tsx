@@ -100,7 +100,10 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               ? {
                   ...r,
                   stroke: color,
-                  fill: backgroundColor || undefined,
+                  // Only update fill if backgroundColor is provided, otherwise keep existing fill
+                  ...(backgroundColor !== undefined && {
+                    fill: backgroundColor,
+                  }),
                 }
               : r
           )
@@ -223,12 +226,21 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Extract transformations
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
       const rotation = node.rotation();
 
+      // Normalize dimensions
+      const newWidth = Math.max(5, node.width() * scaleX); // Minimum width of 5
+      const newHeight = Math.max(5, node.height() * scaleY); // Minimum height of 5
+
+      // Reset Konva node transformations
       node.scaleX(1);
       node.scaleY(1);
+
+      // Update state with new properties
       setRectangles((rects) =>
         rects.map((r) =>
           r.id === id
@@ -236,8 +248,8 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
                 ...r,
                 x: node.x(),
                 y: node.y(),
-                width: Math.max(5, node.width() * scaleX),
-                height: Math.max(5, node.height() * scaleY),
+                width: newWidth,
+                height: newHeight,
                 rotation: rotation,
               }
             : r

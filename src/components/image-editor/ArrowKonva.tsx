@@ -69,6 +69,23 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       },
     }));
 
+    // jai maa kali
+    const constrainToBounds = (
+      points: number[],
+      canvasWidth: number,
+      canvasHeight: number
+    ) => {
+      const [x1, y1, x2, y2] = points;
+
+      // Constrain each point to canvas bounds
+      const constrainedX1 = Math.max(0, Math.min(canvasWidth, x1));
+      const constrainedY1 = Math.max(0, Math.min(canvasHeight, y1));
+      const constrainedX2 = Math.max(0, Math.min(canvasWidth, x2));
+      const constrainedY2 = Math.max(0, Math.min(canvasHeight, y2));
+
+      return [constrainedX1, constrainedY1, constrainedX2, constrainedY2];
+    };
+
     // Helper functions for touch gestures
     const getDistance = (p1: any, p2: any) => {
       return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
@@ -126,6 +143,22 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       }
     }, [selectedId, arrows]);
 
+    // Update selected arrow's color in real time when color changes
+    useEffect(() => {
+      if (selectedId) {
+        setArrows((arrs) =>
+          arrs.map((a) =>
+            a.id === selectedId
+              ? {
+                  ...a,
+                  stroke: color,
+                }
+              : a
+          )
+        );
+      }
+    }, [color, selectedId]);
+
     // Single click to start drawing
     const handleStageClick = (e: any) => {
       if (!active) return;
@@ -154,7 +187,6 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       });
       setSelectedId(id);
     };
-
     const handleMouseMove = (e: any) => {
       if (!active || !newArrow) return;
 
@@ -166,9 +198,18 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
 
+      // Constrain mouse position to canvas bounds
+      const constrainedX = Math.max(0, Math.min(width, pos.x));
+      const constrainedY = Math.max(0, Math.min(height, pos.y));
+
       setNewArrow({
         ...newArrow,
-        points: [newArrow.points[0], newArrow.points[1], pos.x, pos.y],
+        points: [
+          newArrow.points[0],
+          newArrow.points[1],
+          constrainedX,
+          constrainedY,
+        ],
       });
     };
 
@@ -289,33 +330,62 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Reset transformations after applying them
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
+      const rotation = node.rotation();
       const x = node.x();
       const y = node.y();
+
       const oldPoints = node.points();
 
-      // Scale points around the center
-      const cx = (oldPoints[0] + oldPoints[2]) / 2;
-      const cy = (oldPoints[1] + oldPoints[3]) / 2;
-      const newPoints = [
-        cx + (oldPoints[0] - cx) * scaleX + x,
-        cy + (oldPoints[1] - cy) * scaleY + y,
-        cx + (oldPoints[2] - cx) * scaleX + x,
-        cy + (oldPoints[3] - cy) * scaleY + y,
+      // Calculate the center of the arrow
+      const centerX = (oldPoints[0] + oldPoints[2]) / 2;
+      const centerY = (oldPoints[1] + oldPoints[3]) / 2;
+
+      // Calculate the original length and angle
+      const originalLength = Math.sqrt(
+        Math.pow(oldPoints[2] - oldPoints[0], 2) +
+          Math.pow(oldPoints[3] - oldPoints[1], 2)
+      );
+      const originalAngle = Math.atan2(
+        oldPoints[3] - oldPoints[1],
+        oldPoints[2] - oldPoints[0]
+      );
+
+      // Apply scaling to length
+      const newLength = originalLength * Math.max(scaleX, scaleY);
+
+      // Apply rotation
+      const newAngle = originalAngle + (rotation * Math.PI) / 180;
+
+      // Calculate new points, keeping the center fixed
+      const halfLength = newLength / 2;
+      let newPoints = [
+        centerX - halfLength * Math.cos(newAngle),
+        centerY - halfLength * Math.sin(newAngle),
+        centerX + halfLength * Math.cos(newAngle),
+        centerY + halfLength * Math.sin(newAngle),
       ];
 
+      // Constrain the arrow within the canvas boundaries
+      const constrainedPoints = constrainToBounds(newPoints, width, height);
+
+      // Reset node transformations
       node.scaleX(1);
       node.scaleY(1);
+      node.rotation(0);
       node.x(0);
       node.y(0);
 
+      // Update the arrow state
       setArrows((arrs) =>
         arrs.map((a) =>
           a.id === id
             ? {
                 ...a,
-                points: newPoints,
+                points: constrainedPoints,
               }
             : a
         )
@@ -365,12 +435,15 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       // Normal drag behavior - update arrow position
       const dx = x;
       const dy = y;
-      const newPoints = [
+      let newPoints = [
         oldPoints[0] + dx,
         oldPoints[1] + dy,
         oldPoints[2] + dx,
         oldPoints[3] + dy,
       ];
+
+      // Constrain arrow to canvas bounds
+      newPoints = constrainToBounds(newPoints, width, height);
 
       node.x(0);
       node.y(0);
@@ -435,6 +508,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={arrow.points}
               stroke={arrow.stroke}
               strokeWidth={arrow.strokeWidth}
+              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)} // Increases clickable area
+              perfectDrawEnabled={false}
               dash={getDashPattern(strokeStyle)}
               pointerLength={15}
               pointerWidth={15}
@@ -442,11 +517,13 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               draggable={arrow.draggable}
               onClick={(e) => {
                 e.cancelBubble = true;
-                handleArrowClick(arrow.id);
+                setSelectedId(arrow.id); // Selects the arrow
+                if (onElementSelect) onElementSelect(arrow.id, "arrow");
               }}
               onTap={(e) => {
                 e.cancelBubble = true;
-                handleArrowClick(arrow.id);
+                setSelectedId(arrow.id); // Selects the arrow for touch
+                if (onElementSelect) onElementSelect(arrow.id, "arrow");
               }}
               onDragEnd={(e) => handleDragEnd(e, arrow.id)}
               onTransformEnd={(e) => handleTransformEnd(e, arrow.id)}
@@ -457,6 +534,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={newArrow.points}
               stroke={newArrow.stroke}
               strokeWidth={newArrow.strokeWidth}
+              hitStrokeWidth={Math.max(90, newArrow.strokeWidth * 4)}
+              perfectDrawEnabled={false}
               dash={getDashPattern(strokeStyle)}
               pointerLength={15}
               pointerWidth={15}
@@ -471,10 +550,6 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               "top-right",
               "bottom-left",
               "bottom-right",
-              "middle-left",
-              "middle-right",
-              "bottom-center",
-              "top-center",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}
