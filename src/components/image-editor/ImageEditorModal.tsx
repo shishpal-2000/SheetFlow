@@ -3,16 +3,26 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { IssueImage } from "@/types";
 import dynamic from "next/dynamic";
-const TextEditor = dynamic(() => import("./TextEditor"), { ssr: false });
+const TextEditor = dynamic(() => import("./TextEditor"), {
+  ssr: false,
+  loading: () => <div>Loading Text Editor...</div>,
+});
 import type { TextEditorHandle, KonvaTextShape } from "./TextEditor";
 const KonvaRectangle = dynamic(() => import("./KonvaRectangle"), {
   ssr: false,
+  loading: () => <div>Loading Rectangle Tool...</div>,
 });
 import type { KonvaRectangleHandle } from "./KonvaRectangle";
-const ArrowKonva = dynamic(() => import("./ArrowKonva"), { ssr: false });
+const ArrowKonva = dynamic(() => import("./ArrowKonva"), {
+  ssr: false,
+  loading: () => <div>Loading Arrow Tool...</div>,
+});
 import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
 
-const KonvaCircle = dynamic(() => import("./KonvaCircle"), { ssr: false });
+const KonvaCircle = dynamic(() => import("./KonvaCircle"), {
+  ssr: false,
+  loading: () => <div>Loading Circle Tool...</div>,
+});
 import type { KonvaCircleHandle, KonvaCircleShape } from "./KonvaCircle";
 
 const KonvaDoubleArrow = dynamic(() => import("./KonvaDoubleArrow"), {
@@ -23,7 +33,6 @@ import type {
   KonvaDoubleArrowShape,
 } from "./KonvaDoubleArrow";
 
-import { v4 as uuidv4 } from "uuid";
 import {
   Dialog,
   DialogContent,
