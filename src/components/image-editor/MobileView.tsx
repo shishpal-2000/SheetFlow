@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { set } from "date-fns";
 
 interface MobileViewProps {
   undo: () => void;
@@ -42,6 +43,8 @@ interface MobileViewProps {
   handleToolChange: (tool: DrawingTool) => void;
   currentColor: string;
   setCurrentColor: (color: string) => void;
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
   brushSize: number;
   setBrushSize: (size: number) => void;
   minBrushSize: number;
@@ -82,6 +85,8 @@ const MobileView = ({
   handleToolChange,
   currentColor,
   setCurrentColor,
+  backgroundColor,
+  setBackgroundColor,
   brushSize,
   setBrushSize,
   minBrushSize,
@@ -278,16 +283,34 @@ const MobileView = ({
       <div className="flex flex-row gap-2 mt-1 sm:mt-4 w-full justify-between">
         <div className="flex items-center gap-2">
           <Label htmlFor="color-picker-sm" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" /> Color
+            {/* <Palette className="h-4 w-4" />  */}
+            Color
           </Label>
           {/* <div className="rounded-full w-6 h-6"> */}
           <input
             type="color"
+            id="color-picker-sm"
             value={currentColor}
             onChange={(e) => setCurrentColor(e.target.value)}
             className="rounded-full w-6 h-6"
           />
           {/* </div> */}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label
+            htmlFor="background-color-picker-sm"
+            className="flex items-center gap-2"
+          >
+            Bg
+          </Label>
+          <input
+            type="color"
+            id="background-color-picker-sm"
+            value={backgroundColor}
+            onChange={(e) => setBackgroundColor(e.target.value)}
+            className="rounded-full w-6 h-6"
+          />
         </div>
 
         <div className="flex items-center gap-2 min-w-[12rem]">

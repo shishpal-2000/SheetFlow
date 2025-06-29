@@ -344,12 +344,12 @@ export default function ImageEditorModal({
         ctx.beginPath();
         ctx.moveTo(drawX1, drawY1);
         ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle + Math.PI + Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle + Math.PI + Math.PI / 7)
+          drawX1 + headlen * Math.cos(angle + Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle + Math.PI / 7)
         );
         ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle + Math.PI - Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle + Math.PI - Math.PI / 7)
+          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
+          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
         );
         ctx.lineTo(drawX1, drawY1);
         ctx.stroke();
@@ -566,6 +566,28 @@ export default function ImageEditorModal({
 
     setTexts([]);
     saveHistory();
+  }, []);
+
+  const checkTrashZoneCollision = useCallback(
+    (screenX: number, screenY: number) => {
+      const trashZone = document.getElementById("trash-zone");
+      if (!trashZone) return false;
+
+      const trashRect = trashZone.getBoundingClientRect();
+      const tolerance = 50;
+
+      return (
+        screenX >= trashRect.left - tolerance &&
+        screenX <= trashRect.right + tolerance &&
+        screenY >= trashRect.top - tolerance &&
+        screenY <= trashRect.bottom + tolerance
+      );
+    },
+    []
+  );
+
+  const updateTrashZoneState = useCallback((isOver: boolean) => {
+    setIsDraggedOverTrash(isOver);
   }, []);
 
   const drawImageOnCanvas = useCallback(() => {
@@ -1907,6 +1929,8 @@ export default function ImageEditorModal({
                     setSelectedElementId(null);
                     setSelectedElementType(null);
                   }}
+                  checkTrashZoneCollision={checkTrashZoneCollision}
+                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 
@@ -2029,7 +2053,7 @@ export default function ImageEditorModal({
               {showTrashIcon && (
                 <div
                   id="trash-zone"
-                  className={`fixed bottom-56 right-4 z-[9999] p-3 rounded-full shadow-lg border-2 transition-all duration-200 text-white ${
+                  className={`fixed bottom-56 right-6 p-3 rounded-full shadow-lg border-2 transition-all duration-200 text-white ${
                     isDraggedOverTrash
                       ? "bg-red-600 border-red-700 scale-125"
                       : "bg-red-500 border-red-600 hover:bg-red-600 hover:scale-110"
@@ -2042,6 +2066,7 @@ export default function ImageEditorModal({
                       ? "0 6px 20px rgba(239, 68, 68, 0.6)"
                       : "0 4px 15px rgba(239, 68, 68, 0.4)",
                     zIndex: 9999,
+                    pointerEvents: "none",
                   }}
                 >
                   <Trash2
@@ -2051,7 +2076,7 @@ export default function ImageEditorModal({
                   />
 
                   {/* Tooltip */}
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-[8px] px-2 py-1 rounded whitespace-nowrap pointer-events-none">
                     {isDraggedOverTrash
                       ? "Release to delete"
                       : "Drag here to delete"}
@@ -2072,6 +2097,8 @@ export default function ImageEditorModal({
               handleToolChange={handleToolChange}
               currentColor={currentColor}
               setCurrentColor={setCurrentColor}
+              backgroundColor={backgroundColor}
+              setBackgroundColor={setBackgroundColor}
               brushSize={brushSize}
               setBrushSize={setBrushSize}
               minBrushSize={minBrushSize}

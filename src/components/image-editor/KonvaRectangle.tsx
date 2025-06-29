@@ -33,6 +33,8 @@ interface KonvaRectangleProps {
   onFlatten: (rects: any[]) => void;
   onElementSelect?: (elementId: string, elementType: string) => void;
   onElementDeselect?: () => void;
+  checkTrashZoneCollision?: (screenX: number, screenY: number) => boolean;
+  updateTrashZoneState?: (isOver: boolean) => void;
 }
 
 export interface KonvaRectangleHandle {
@@ -51,6 +53,8 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       onFlatten,
       onElementSelect,
       onElementDeselect,
+      checkTrashZoneCollision,
+      updateTrashZoneState,
     },
     ref
   ) => {
@@ -74,6 +78,15 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
           setRectangles((rects) => rects.filter((r) => r.id !== selectedId));
           setSelectedId(null);
+
+          if (trRef.current) {
+            trRef.current.nodes([]);
+            trRef.current.getLayer().batchDraw();
+          }
+
+          if (onElementDeselect) {
+            onElementDeselect();
+          }
         }
       };
       window.addEventListener("keydown", handleKeyDown);
@@ -184,41 +197,99 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       }
     };
 
+    const handleDragMove = (e: any, id: string) => {
+      const stage = e.target.getStage();
+      const node = e.target;
+      const { x, y } = node.position();
+
+      // Get screen coordinates for trash detection
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check collision with trash zone
+      if (checkTrashZoneCollision && updateTrashZoneState) {
+        const isOverTrash = checkTrashZoneCollision(screenX, screenY);
+        updateTrashZoneState(isOverTrash);
+      }
+    };
+
+    // const handleDragEnd = (e: any, id: string) => {
+    //   const stage = e.target.getStage();
+    //   const node = e.target;
+    //   const { x, y } = node.position();
+
+    //   // Get the stage's position on screen
+    //   const stageContainer = stage.container();
+    //   const stageRect = stageContainer.getBoundingClientRect();
+
+    //   // Convert stage coordinates to screen coordinates
+    //   const screenX = stageRect.left + x;
+    //   const screenY = stageRect.top + y;
+
+    //   // Check if dropped on trash zone
+    //   const trashZone = document.getElementById("trash-zone");
+    //   if (trashZone) {
+    //     const trashRect = trashZone.getBoundingClientRect();
+
+    //     // Check if the rectangle overlaps with trash zone (with some tolerance)
+    //     const tolerance = 50;
+    //     if (
+    //       screenX + 50 >= trashRect.left - tolerance && // rectangle right edge
+    //       screenX - 50 <= trashRect.right + tolerance && // rectangle left edge
+    //       screenY + 50 >= trashRect.top - tolerance && // rectangle bottom edge
+    //       screenY - 50 <= trashRect.bottom + tolerance // rectangle top edge
+    //     ) {
+    //       // Delete the rectangle
+    //       setRectangles((rects) => rects.filter((r) => r.id !== id));
+    //       setSelectedId(null);
+    //       if (onElementDeselect) onElementDeselect();
+    //       return;
+    //     }
+    //   }
+
+    //   // Normal drag behavior - update position
+    //   setRectangles((rects) =>
+    //     rects.map((r) => (r.id === id ? { ...r, x, y } : r))
+    //   );
+    // };
+
     const handleDragEnd = (e: any, id: string) => {
       const stage = e.target.getStage();
       const node = e.target;
       const { x, y } = node.position();
 
-      // Get the stage's position on screen
+      // Reset trash zone state
+      if (updateTrashZoneState) {
+        updateTrashZoneState(false);
+      }
+
+      // Get screen coordinates
       const stageContainer = stage.container();
       const stageRect = stageContainer.getBoundingClientRect();
-
-      // Convert stage coordinates to screen coordinates
       const screenX = stageRect.left + x;
       const screenY = stageRect.top + y;
 
       // Check if dropped on trash zone
-      const trashZone = document.getElementById("trash-zone");
-      if (trashZone) {
-        const trashRect = trashZone.getBoundingClientRect();
+      if (
+        checkTrashZoneCollision &&
+        checkTrashZoneCollision(screenX, screenY)
+      ) {
+        // Delete the rectangle
+        setRectangles((rects) => rects.filter((r) => r.id !== id));
+        setSelectedId(null);
 
-        // Check if the rectangle overlaps with trash zone (with some tolerance)
-        const tolerance = 50;
-        if (
-          screenX + 50 >= trashRect.left - tolerance && // rectangle right edge
-          screenX - 50 <= trashRect.right + tolerance && // rectangle left edge
-          screenY + 50 >= trashRect.top - tolerance && // rectangle bottom edge
-          screenY - 50 <= trashRect.bottom + tolerance // rectangle top edge
-        ) {
-          // Delete the rectangle
-          setRectangles((rects) => rects.filter((r) => r.id !== id));
-          setSelectedId(null);
-          if (onElementDeselect) onElementDeselect();
-          return;
+        if (trRef.current) {
+          trRef.current.nodes([]);
+          trRef.current.getLayer().batchDraw();
         }
+
+        if (onElementDeselect) onElementDeselect();
+        return;
       }
 
-      // Normal drag behavior - update position
+      // Normal drag behavior
       setRectangles((rects) =>
         rects.map((r) => (r.id === id ? { ...r, x, y } : r))
       );
@@ -313,6 +384,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
               fill={rect.fill}
               onClick={() => handleRectClick(rect.id)}
               onTap={() => handleRectClick(rect.id)}
+              onDragMove={(e) => handleDragMove(e, rect.id)}
               onDragEnd={(e) => handleDragEnd(e, rect.id)}
               onTransformEnd={(e) => handleTransformEnd(e, rect.id)}
             />
