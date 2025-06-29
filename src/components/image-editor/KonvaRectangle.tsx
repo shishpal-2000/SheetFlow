@@ -27,7 +27,7 @@ interface KonvaRectangleProps {
   active: boolean;
   color: string;
   brushSize: number;
-  backgroundColor?: string; // Optional background color prop
+  backgroundColor?: string;
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
@@ -101,6 +101,9 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           trRef.current.nodes([node]);
           trRef.current.getLayer().batchDraw();
         }
+      } else if (trRef.current) {
+        trRef.current.nodes([]);
+        trRef.current.getLayer().batchDraw();
       }
     }, [selectedId, rectangles]);
 
