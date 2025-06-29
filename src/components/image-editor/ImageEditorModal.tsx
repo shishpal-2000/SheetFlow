@@ -253,6 +253,7 @@ export default function ImageEditorModal({
       // Set stroke style
       ctx.strokeStyle = r.stroke;
       ctx.lineWidth = r.strokeWidth;
+      ctx.fillStyle = r.fill || "transparent";
 
       if (r.rotation) {
         // For rectangles with rotation
@@ -262,9 +263,11 @@ export default function ImageEditorModal({
         // Move to rectangle center, rotate, draw centered rectangle
         ctx.translate(centerX, centerY);
         ctx.rotate((r.rotation * Math.PI) / 180);
+        ctx.fillRect(-r.width / 2, -r.height / 2, r.width, r.height);
         ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
       } else {
         // For rectangles without rotation - draw directly
+        ctx.fillRect(r.x, r.y, r.width, r.height);
         ctx.strokeRect(r.x, r.y, r.width, r.height);
       }
 
@@ -476,6 +479,10 @@ export default function ImageEditorModal({
         ctx.lineWidth = c.strokeWidth ?? 1;
         ctx.beginPath();
         ctx.arc(c.x, c.y, c.radius, 0, 2 * Math.PI);
+        if (c.fill && c.fill !== "transparent") {
+          ctx.fillStyle = c.fill;
+          ctx.fill();
+        }
         ctx.stroke();
         ctx.restore();
       });

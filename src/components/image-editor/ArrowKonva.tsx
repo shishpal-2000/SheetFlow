@@ -508,6 +508,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={arrow.points}
               stroke={arrow.stroke}
               strokeWidth={arrow.strokeWidth}
+              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)} // Increases clickable area
+              perfectDrawEnabled={false}
               dash={getDashPattern(strokeStyle)}
               pointerLength={15}
               pointerWidth={15}
@@ -515,11 +517,13 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               draggable={arrow.draggable}
               onClick={(e) => {
                 e.cancelBubble = true;
-                handleArrowClick(arrow.id);
+                setSelectedId(arrow.id); // Selects the arrow
+                if (onElementSelect) onElementSelect(arrow.id, "arrow");
               }}
               onTap={(e) => {
                 e.cancelBubble = true;
-                handleArrowClick(arrow.id);
+                setSelectedId(arrow.id); // Selects the arrow for touch
+                if (onElementSelect) onElementSelect(arrow.id, "arrow");
               }}
               onDragEnd={(e) => handleDragEnd(e, arrow.id)}
               onTransformEnd={(e) => handleTransformEnd(e, arrow.id)}
@@ -530,6 +534,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={newArrow.points}
               stroke={newArrow.stroke}
               strokeWidth={newArrow.strokeWidth}
+              hitStrokeWidth={Math.max(90, newArrow.strokeWidth * 4)}
+              perfectDrawEnabled={false}
               dash={getDashPattern(strokeStyle)}
               pointerLength={15}
               pointerWidth={15}

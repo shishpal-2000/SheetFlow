@@ -103,7 +103,10 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         stroke: color,
         strokeWidth: brushSize,
         draggable: true,
-        fill: backgroundColor || undefined,
+        fill:
+          backgroundColor && backgroundColor !== "transparent"
+            ? backgroundColor
+            : undefined,
       });
       setSelectedId(id);
     };
@@ -204,17 +207,6 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     };
 
     useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if ((e.key === "Delete" || e.key === "Backspace") && selectedId) {
-          setCircles((cs) => cs.filter((c) => c.id !== selectedId));
-          setSelectedId(null);
-        }
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedId]);
-
-    useEffect(() => {
       if (trRef.current && selectedId && stageRef.current) {
         const node = stageRef.current.findOne(`#${selectedId}`);
         if (node) {
@@ -236,7 +228,11 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               ? {
                   ...c,
                   stroke: color,
-                  fill: backgroundColor || undefined,
+                  // Only update fill if backgroundColor is provided and not empty/transparent, otherwise keep existing fill
+                  ...(backgroundColor &&
+                    backgroundColor !== "transparent" && {
+                      fill: backgroundColor,
+                    }),
                 }
               : c
           )
