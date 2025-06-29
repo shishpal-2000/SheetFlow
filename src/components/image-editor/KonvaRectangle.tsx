@@ -27,7 +27,7 @@ interface KonvaRectangleProps {
   active: boolean;
   color: string;
   brushSize: number;
-  backgroundColor?: string; // Optional background color prop
+  backgroundColor?: string;
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
@@ -82,7 +82,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     // Transformer selection
     useEffect(() => {
-      if (trRef.current && selectedId && stageRef.current) {
+      if (trRef.current && selectedId) {
         const node = stageRef.current.findOne(`#${selectedId}`);
         if (node) {
           trRef.current.nodes([node]);
@@ -334,7 +334,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
           )}
           <Transformer
             ref={trRef}
-            rotateEnabled={true}
+            rotateEnabled={false}
             enabledAnchors={[
               "top-left",
               "top-right",
