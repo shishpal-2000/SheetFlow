@@ -80,9 +80,8 @@ import {
 import { CurveTool } from "./CurveTool";
 import CurveArrowTool from "./CurveArrowTool";
 import MobileView from "./MobileView";
-import Curve from "../ui/Icons/curve";
-import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
 import { TbArrowCurveRight } from "react-icons/tb";
+import { set } from "date-fns";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -215,6 +214,14 @@ export default function ImageEditorModal({
   const handleEraserCursorHide = () => {
     setEraserCursor(null);
   };
+
+  useEffect(() => {
+    if (activeTool === "eraser") {
+      setBrushSize(20);
+    } else {
+      setBrushSize(3);
+    }
+  }, [activeTool]);
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -2092,7 +2099,7 @@ export default function ImageEditorModal({
                     top: `${eraserCursor.y - brushSize / 2}px`,
                     width: `${brushSize}px`,
                     height: `${brushSize}px`,
-                    border: "2px solid #0707078",
+                    border: "2px solid #07070780",
                     borderRadius: "50%",
                     pointerEvents: "none",
                     background: "rgba(255,255,255,0.1)",

@@ -34,6 +34,7 @@ import {
 } from "../ui/select";
 import Curve from "../ui/Icons/curve";
 import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
+import { useEffect } from "react";
 
 interface MobileViewProps {
   undo: () => void;
