@@ -197,10 +197,24 @@ export default function ImageEditorModal({
   } | null>(null);
 
   const [mounted, setMounted] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [eraserCursor, setEraserCursor] = useState<Point | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleEraserCursorMove = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
+  ) => {
+    if (activeTool !== "eraser") return;
+    const pos = getMousePos(e);
+    setEraserCursor(pos);
+  };
+
+  const handleEraserCursorHide = () => {
+    setEraserCursor(null);
+  };
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -800,6 +814,30 @@ export default function ImageEditorModal({
     });
   }, []);
 
+  const hasUnsavedChanges =
+    hasDrawingCanvasContent() ||
+    rectangles.length > 0 ||
+    texts.length > 0 ||
+    arrows.length > 0 ||
+    circles.length > 0 ||
+    doubleArrows.length > 0 ||
+    Pencil.length > 0 ||
+    textInputPosition !== null ||
+    cropArea !== null;
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      setShowCancelConfirm(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelConfirm(false);
+    onClose();
+  };
+
   const handleToolChange = (tool: DrawingTool) => {
     const drawingCanvas = drawingCanvasRef.current;
     const ctx = drawingCanvas?.getContext("2d");
@@ -1389,7 +1427,11 @@ export default function ImageEditorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex flex-col lg:max-w-5xl h-[95vh] p-0 overflow-y-auto">
+      <DialogContent
+        className="flex flex-col lg:max-w-5xl h-[95vh] p-0 overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <DialogHeader className="p-4 border-b hidden sm:block">
           <DialogTitle>Edit Image: {image.name}</DialogTitle>
         </DialogHeader>
@@ -1861,12 +1903,24 @@ export default function ImageEditorModal({
               <canvas
                 ref={drawingCanvasRef}
                 onMouseDown={startDrawing}
-                onMouseMove={draw}
+                onMouseMove={(e) => {
+                  draw(e);
+                  handleEraserCursorMove(e);
+                }}
                 onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
+                onMouseLeave={(e) => {
+                  stopDrawing();
+                  handleEraserCursorHide();
+                }}
                 onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
+                onTouchMove={(e) => {
+                  draw(e);
+                  handleEraserCursorMove(e);
+                }}
+                onTouchEnd={(e) => {
+                  stopDrawing();
+                  handleEraserCursorHide();
+                }}
                 className="absolute w-full h-full"
                 style={{
                   cursor:
@@ -1874,6 +1928,8 @@ export default function ImageEditorModal({
                       ? "text"
                       : activeTool === null
                       ? "default"
+                      : activeTool === "eraser"
+                      ? "none"
                       : "crosshair",
                 }}
               />
@@ -2027,6 +2083,25 @@ export default function ImageEditorModal({
                 />
               )}
 
+              {/* eraser */}
+              {eraserCursor && activeTool === "eraser" && (
+                <div
+                  style={{
+                    position: "absolute",
+                    left: `${eraserCursor.x - brushSize / 2}px`,
+                    top: `${eraserCursor.y - brushSize / 2}px`,
+                    width: `${brushSize}px`,
+                    height: `${brushSize}px`,
+                    border: "2px solid #0707078",
+                    borderRadius: "50%",
+                    pointerEvents: "none",
+                    background: "rgba(255,255,255,0.1)",
+                    zIndex: 10,
+                    boxSizing: "border-box",
+                  }}
+                />
+              )}
+
               {/* Trash Icon Overlay - Only visible on mobile when element is selected */}
               {showTrashIcon && (
                 <div
@@ -2116,16 +2191,14 @@ export default function ImageEditorModal({
             <Download className="h-4 w-4" />
             <span className="hidden sm:block">Download</span>
           </Button>
-          <DialogClose asChild>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="flex items-center text-[12px] w-max"
-            >
-              Cancel
-            </Button>
-          </DialogClose>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            className="flex items-center text-[12px] w-max"
+          >
+            Cancel
+          </Button>
           <Button
             type="button"
             onClick={handleSave}
@@ -2134,6 +2207,36 @@ export default function ImageEditorModal({
             Save Changes
           </Button>
         </DialogFooter>
+        {showCancelConfirm && (
+          <Dialog
+            open={showCancelConfirm}
+            onOpenChange={() => setShowCancelConfirm(false)}
+          >
+            <DialogContent className="w-[90%] m-auto">
+              <DialogHeader>
+                <DialogTitle className="mt-3 mr-4 md:mt-0 md:mr-0">
+                  Are you sure you want to cancel?
+                </DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                You have unsaved changes. Are you sure you want to cancel and
+                lose your work?
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCancelConfirm(false)}
+                  className="mt-4 md:mt-0"
+                >
+                  No, keep editing
+                </Button>
+                <Button variant="destructive" onClick={handleConfirmCancel}>
+                  Yes, cancel
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </DialogContent>
     </Dialog>
   );
