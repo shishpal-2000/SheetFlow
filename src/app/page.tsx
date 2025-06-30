@@ -6,7 +6,14 @@ import IssueTable from "@/components/issue-tracker/IssueTable";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import ImageEditorModal from "@/components/image-editor/ImageEditorModal";
+import dynamic from "next/dynamic";
+const ImageEditorModal = dynamic(
+  () => import("../components/image-editor/ImageEditorModal"),
+  {
+    ssr: false,
+    loading: () => <div>Loading Text Editor...</div>,
+  }
+);
 import { v4 as uuidv4 } from "uuid";
 
 const SELECTABLE_COL_INDICES = [1, 2]; // Column indices for "Description" and "Images"

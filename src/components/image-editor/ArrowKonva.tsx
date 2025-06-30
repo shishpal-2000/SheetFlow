@@ -8,10 +8,11 @@ import React, {
 } from "react";
 import { Stage, Layer, Arrow, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
+import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaArrow {
   id: string;
-  points: number[]; // [x1, y1, x2, y2]
+  points: number[];
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
@@ -100,21 +101,6 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         x: (p1.x + p2.x) / 2,
         y: (p1.y + p2.y) / 2,
       };
-    };
-
-    const getDashPattern = (style: StrokeStyle) => {
-      switch (style) {
-        case "solid":
-          return [];
-        case "dashed":
-          return [brushSize * 3, brushSize * 2];
-        case "dotted":
-          return [brushSize, brushSize];
-        case "double":
-          return []; // For double style, we'll handle differently
-        default:
-          return [];
-      }
     };
 
     // Keyboard delete
@@ -508,9 +494,9 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={arrow.points}
               stroke={arrow.stroke}
               strokeWidth={arrow.strokeWidth}
-              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)} // Increases clickable area
+              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerLength={15}
               pointerWidth={15}
               fill={arrow.stroke}
@@ -536,7 +522,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               strokeWidth={newArrow.strokeWidth}
               hitStrokeWidth={Math.max(90, newArrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerLength={15}
               pointerWidth={15}
               fill={newArrow.stroke}

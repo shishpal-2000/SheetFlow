@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { Stage, Layer, Arrow, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
+import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaDoubleArrowShape {
   id: string;
@@ -80,21 +81,6 @@ const KonvaDoubleArrow = forwardRef<
         x: (p1.x + p2.x) / 2,
         y: (p1.y + p2.y) / 2,
       };
-    };
-
-    const getDashPattern = (style: StrokeStyle) => {
-      switch (style) {
-        case "solid":
-          return [];
-        case "dashed":
-          return [brushSize * 3, brushSize * 2];
-        case "dotted":
-          return [brushSize, brushSize];
-        case "double":
-          return []; // For double style, we'll handle differently
-        default:
-          return [];
-      }
     };
 
     useImperativeHandle(ref, () => ({
@@ -517,7 +503,7 @@ const KonvaDoubleArrow = forwardRef<
               strokeWidth={arrow.strokeWidth}
               hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerLength={15}
               pointerWidth={15}
               fill={arrow.stroke}
@@ -546,7 +532,7 @@ const KonvaDoubleArrow = forwardRef<
               pointerLength={15}
               pointerWidth={15}
               fill={newArrow.stroke}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerAtBeginning={true}
               pointerAtEnding={true}
             />
