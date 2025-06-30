@@ -208,49 +208,6 @@ export default function ImageEditorModal({
     return () => window.removeEventListener("resize", checkScreenSize);
   }, [selectedElementId]);
 
-  // Delete element handler
-  const handleDeleteElement = useCallback(
-    (elementId: string, elementType: string) => {
-      switch (elementType) {
-        case "rectangle":
-          setRectangles((prev) => prev.filter((rect) => rect.id !== elementId));
-          break;
-        case "circle":
-          setCircles((prev) =>
-            prev.filter((circle) => circle.id !== elementId)
-          );
-          break;
-        case "arrow":
-          setArrows((prev) => prev.filter((arrow) => arrow.id !== elementId));
-          break;
-        case "double-arrow":
-          setDoubleArrows((prev) =>
-            prev.filter((arrow) => arrow.id !== elementId)
-          );
-          break;
-        case "text":
-          setTexts((prev) => prev.filter((text) => text.id !== elementId));
-          break;
-      }
-
-      // Reset selection and hide trash
-      setSelectedElementId(null);
-      setSelectedElementType(null);
-      setShowTrashIcon(false);
-      setIsDraggedOverTrash(false);
-
-      // Save to history
-      saveHistory();
-
-      toast({
-        title: "Element Deleted",
-        description: "The selected element has been removed.",
-        duration: 2000,
-      });
-    },
-    [toast, saveHistory]
-  );
-
   const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
     const ctx = drawingCanvasRef.current.getContext("2d");

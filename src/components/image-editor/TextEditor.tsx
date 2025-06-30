@@ -123,6 +123,22 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       }
     }, [selectedId, texts]);
 
+    useEffect(() => {
+      if (selectedId && active) {
+        setTexts((arr) =>
+          arr.map((t) =>
+            t.id === selectedId
+              ? {
+                  ...t,
+                  fill: color,
+                  backgroundColor: backgroundColor,
+                }
+              : t
+          )
+        );
+      }
+    }, [color, backgroundColor, selectedId, active]);
+
     const handleDoubleTap = (e: any, id: string) => {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300; // milliseconds
@@ -132,10 +148,17 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
         setTapTimeout(null);
       }
 
-      if (now - lastTap < DOUBLE_TAP_DELAY) {
+      if (now - lastTap < DOUBLE_TAP_DELAY && tapCount === 1) {
         // Double tap detected
         setTapCount(0);
         setLastTap(0);
+
+        // Prevent default mobile behavior
+        if (e.evt) {
+          e.evt.preventDefault();
+          e.evt.stopPropagation();
+        }
+
         handleDblClick(e, id);
       } else {
         // First tap
@@ -217,15 +240,14 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
     const handleDblClick = (e: any, id: string) => {
       const group = e.target.getParent();
       const textNode = group.findOne("Text");
-      const rectNode = group.findOne("Rect");
 
       setEditingText({
         id,
         x: group.x(),
         y: group.y(),
         value: textNode.text(),
-        fill: textNode.fill(),
-        backgroundColor: rectNode.fill(),
+        fill: color,
+        backgroundColor: backgroundColor,
       });
     };
 
@@ -324,10 +346,11 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                 );
               } else {
                 // Add new
+                const newId = `text-${Date.now()}`;
                 setTexts((arr) => [
                   ...arr,
                   {
-                    id: `text-${Date.now()}`,
+                    id: newId,
                     x: editingText.x,
                     y: editingText.y,
                     text: editingText.value,
@@ -338,6 +361,12 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                     draggable: true,
                   },
                 ]);
+
+                // Select the newly created text
+                setSelectedId(newId);
+                if (onElementSelect) {
+                  onElementSelect(newId, "text");
+                }
               }
             }
             setEditingText(null);
@@ -384,10 +413,21 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
           onTap={(e) => {
             const clickedOnEmpty = e.target === e.target.getStage();
             if (clickedOnEmpty) {
-              setSelectedId(null);
-              if (onElementDeselect) {
-                onElementDeselect();
+              // Check for double-tap on empty stage for mobile
+              const now = Date.now();
+              const DOUBLE_TAP_DELAY = 400;
+
+              if (now - lastTap < DOUBLE_TAP_DELAY) {
+                // Double tap on empty stage - create new text
+                handleStageDblClick(e);
+              } else {
+                // Single tap - deselect
+                setSelectedId(null);
+                if (onElementDeselect) {
+                  onElementDeselect();
+                }
               }
+              setLastTap(now);
             }
           }}
         >
