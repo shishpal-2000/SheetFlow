@@ -134,3 +134,23 @@ body {
 .konvajs-content {
   touch-action: none;
 }
+
+/* Add this to your global.css or component styles */
+/* .eraser-cursor {
+  cursor: none !important;
+}
+
+.eraser-cursor::after {
+  content: '';
+  position: fixed;
+  width: var(--cursor-size, 20px);
+  height: var(--cursor-size, 20px);
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.1);
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  left: var(--cursor-x, 0px);
+  top: var(--cursor-y, 0px);
+} */

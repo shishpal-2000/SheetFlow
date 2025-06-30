@@ -80,6 +80,9 @@ import {
 import { CurveTool } from "./CurveTool";
 import CurveArrowTool from "./CurveArrowTool";
 import MobileView from "./MobileView";
+import Curve from "../ui/Icons/curve";
+import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
+import { TbArrowCurveRight } from "react-icons/tb";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -812,6 +815,12 @@ export default function ImageEditorModal({
       );
     }
 
+    if (activeTool === "eraser") {
+      setBrushSize(10);
+    } else if (activeTool === "pencil") {
+      setBrushSize(3);
+    }
+
     // If leaving rectangle tool, flatten rectangles before switching
     if (activeTool === "rectangle" && konvaRectRef.current) {
       konvaRectRef.current.flatten();
@@ -1491,6 +1500,8 @@ export default function ImageEditorModal({
                   });
                   if (hasChanges && activeTool !== "crop") {
                     setShowCropConfirm(true);
+                    setShowCurveArrowConfirm(false);
+                    setShowCurveConfirm(false);
                   } else {
                     handleToolChange("crop");
                   }
@@ -1516,13 +1527,17 @@ export default function ImageEditorModal({
                   });
                   if (hasChanges && activeTool !== "curve") {
                     setShowCurveConfirm(true);
+                    setShowCropConfirm(false);
+                    setShowCurveArrowConfirm(false);
                   } else {
                     setActiveTool("curve");
                   }
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
-                <PenTool className="h-4 w-4" /> Curve
+                <PenTool className="h-4 w-4" />
+                {/* <Curve className="h-4 w-4" /> */}
+                Curve
               </Button>
               <Button
                 variant={activeTool === "curve-arrow" ? "secondary" : "ghost"}
@@ -1541,13 +1556,16 @@ export default function ImageEditorModal({
                   });
                   if (hasChanges && activeTool !== "curve-arrow") {
                     setShowCurveArrowConfirm(true);
+                    setShowCropConfirm(false);
+                    setShowCurveConfirm(false);
                   } else {
                     setActiveTool("curve-arrow");
                   }
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
-                <PenTool className="h-4 w-4" /> Curve <br></br> Arrow
+                <TbArrowCurveRight className="h-4 w-4" />
+                Curve <br></br> Arrow
               </Button>
             </div>
 

@@ -19,6 +19,7 @@ import {
   Type,
   Undo2,
 } from "lucide-react";
+import { TbArrowCurveRight } from "react-icons/tb";
 import { Button } from "../ui/button";
 import { DrawingTool, StrokeStyle } from "./ImageEditorModal";
 import { Label } from "../ui/label";
@@ -31,6 +32,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import Curve from "../ui/Icons/curve";
+import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
 
 interface MobileViewProps {
   undo: () => void;
@@ -104,7 +107,7 @@ const MobileView = ({
   setStrokeStyle,
 }: MobileViewProps) => {
   return (
-    <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 max-h-24 overflow-y-scroll gap-2 border-t relative z-50">
+    <div className="lg:hidden flex flex-col w-full items-center py-2 px-2 sm:p-4 gap-2 border-t relative z-50">
       {/* Tools Section (horizontally scrollable) */}
       <div className="w-full flex-shrink-0 flex flex-row gap-2 p-2 border rounded-md sm:mt-4 h-12 sm:h-auto items-center">
         {/* Changed border-b to border-t */}
@@ -190,6 +193,7 @@ const MobileView = ({
             className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
           >
             <PenTool className="h-4 w-4" />
+            {/* <Curve className="h-4 w-4" /> */}
             <span className="sr-only">Curve</span>
           </Button>
           <Button
@@ -215,7 +219,7 @@ const MobileView = ({
             }}
             className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
           >
-            <PenTool className="h-4 w-4" />
+            <TbArrowCurveRight className="h-4 w-4" />
             <span className="sr-only">Curve Arrow</span>
           </Button>
           <Button
