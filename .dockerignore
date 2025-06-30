@@ -1,0 +1,15 @@
+node_modules
+Dockerfile
+Dockerfile.dev
+Dockerfile.prod
+Dockerfile.test
+Dockerfile.local
+.env
+coverage
+.vscode
+*.md
+.dockerignore
+.git
+.gitignore
+.next
+out

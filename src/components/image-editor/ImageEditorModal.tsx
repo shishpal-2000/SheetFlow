@@ -1,32 +1,35 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
 import type { IssueImage } from "@/types";
+import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
+import type { KonvaCircleHandle, KonvaCircleShape } from "./KonvaCircle";
+import type { TextEditorHandle, KonvaTextShape } from "./TextEditor";
+import type { KonvaRectangleHandle } from "./KonvaRectangle";
+
+import React, { useState, useRef, useEffect, useCallback } from "react";
+
 import dynamic from "next/dynamic";
 const TextEditor = dynamic(() => import("./TextEditor"), {
   ssr: false,
   loading: () => <div>Loading Text Editor...</div>,
 });
-import type { TextEditorHandle, KonvaTextShape } from "./TextEditor";
 const KonvaRectangle = dynamic(() => import("./KonvaRectangle"), {
   ssr: false,
   loading: () => <div>Loading Rectangle Tool...</div>,
 });
-import type { KonvaRectangleHandle } from "./KonvaRectangle";
 const ArrowKonva = dynamic(() => import("./ArrowKonva"), {
   ssr: false,
   loading: () => <div>Loading Arrow Tool...</div>,
 });
-import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
 
 const KonvaCircle = dynamic(() => import("./KonvaCircle"), {
   ssr: false,
   loading: () => <div>Loading Circle Tool...</div>,
 });
-import type { KonvaCircleHandle, KonvaCircleShape } from "./KonvaCircle";
 
 const KonvaDoubleArrow = dynamic(() => import("./KonvaDoubleArrow"), {
   ssr: false,
+  loading: () => <div>Loading Circle Tool...</div>,
 });
 import type {
   KonvaDoubleArrowHandle,
@@ -467,81 +470,84 @@ export default function ImageEditorModal({
     []
   );
 
-  const handleTextFlatten = useCallback((textShapes: KonvaTextShape[]) => {
-    if (!drawingCanvasRef.current) return;
-    const ctx = drawingCanvasRef.current.getContext("2d");
-    if (!ctx) return;
+  const handleTextFlatten = useCallback(
+    (textShapes: KonvaTextShape[]) => {
+      if (!drawingCanvasRef.current) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
 
-    textShapes.forEach((t) => {
-      ctx.save();
+      textShapes.forEach((t) => {
+        ctx.save();
 
-      // Apply scaling transformations
-      const scaleX = t.scaleX || 1;
-      const scaleY = t.scaleY || 1;
+        // Apply scaling transformations
+        const scaleX = t.scaleX || 1;
+        const scaleY = t.scaleY || 1;
 
-      // Calculate scaled font size and padding
-      const scaledFontSize = t.fontSize * scaleY;
-      const padding = 10 * Math.min(scaleX, scaleY); // Use minimum scale for consistent padding
+        // Calculate scaled font size and padding
+        const scaledFontSize = t.fontSize * scaleY;
+        const padding = 10 * Math.min(scaleX, scaleY); // Use minimum scale for consistent padding
 
-      // Create a temporary element to measure text dimensions with scaled font
-      const textNode = document.createElement("span");
-      textNode.innerText = t.text;
-      textNode.style.fontSize = `${scaledFontSize}px`;
-      textNode.style.fontFamily = t.fontFamily;
-      textNode.style.position = "absolute";
-      textNode.style.visibility = "hidden";
-      document.body.appendChild(textNode);
+        // Create a temporary element to measure text dimensions with scaled font
+        const textNode = document.createElement("span");
+        textNode.innerText = t.text;
+        textNode.style.fontSize = `${scaledFontSize}px`;
+        textNode.style.fontFamily = t.fontFamily;
+        textNode.style.position = "absolute";
+        textNode.style.visibility = "hidden";
+        document.body.appendChild(textNode);
 
-      // Get dimensions with scaled padding
-      const width = (textNode.offsetWidth + padding * 2) * scaleX;
-      const height = (textNode.offsetHeight + padding * 2) * scaleY;
+        // Get dimensions with scaled padding
+        const width = (textNode.offsetWidth + padding * 2) * scaleX;
+        const height = (textNode.offsetHeight + padding * 2) * scaleY;
 
-      document.body.removeChild(textNode);
+        document.body.removeChild(textNode);
 
-      // Draw background with rounded corners if specified
-      if (t.backgroundColor && t.backgroundColor !== "transparent") {
-        ctx.fillStyle = t.backgroundColor;
+        // Draw background with rounded corners if specified
+        if (t.backgroundColor && t.backgroundColor !== "transparent") {
+          ctx.fillStyle = t.backgroundColor;
 
-        // Draw rounded rectangle with scaling
-        const radius = 10 * Math.min(scaleX, scaleY); // Scale the radius
-        const x = t.x;
-        const y = t.y;
+          // Draw rounded rectangle with scaling
+          const radius = 10 * Math.min(scaleX, scaleY); // Scale the radius
+          const x = t.x;
+          const y = t.y;
 
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + width - radius, y);
-        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-        ctx.lineTo(x + width, y + height - radius);
-        ctx.quadraticCurveTo(
-          x + width,
-          y + height,
-          x + width - radius,
-          y + height
-        );
-        ctx.lineTo(x + radius, y + height);
-        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
-        ctx.fill();
-      }
+          ctx.beginPath();
+          ctx.moveTo(x + radius, y);
+          ctx.lineTo(x + width - radius, y);
+          ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+          ctx.lineTo(x + width, y + height - radius);
+          ctx.quadraticCurveTo(
+            x + width,
+            y + height,
+            x + width - radius,
+            y + height
+          );
+          ctx.lineTo(x + radius, y + height);
+          ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+          ctx.lineTo(x, y + radius);
+          ctx.quadraticCurveTo(x, y, x + radius, y);
+          ctx.closePath();
+          ctx.fill();
+        }
 
-      // Draw text on top of background with scaling
-      ctx.font = `${scaledFontSize}px ${t.fontFamily}`;
-      ctx.fillStyle = t.fill;
+        // Draw text on top of background with scaling
+        ctx.font = `${scaledFontSize}px ${t.fontFamily}`;
+        ctx.fillStyle = t.fill;
 
-      // Position text with scaled padding and baseline adjustment
-      const textX = t.x + padding;
-      const textY = t.y + padding + scaledFontSize;
+        // Position text with scaled padding and baseline adjustment
+        const textX = t.x + padding;
+        const textY = t.y + padding + scaledFontSize;
 
-      ctx.fillText(t.text, textX, textY);
+        ctx.fillText(t.text, textX, textY);
 
-      ctx.restore();
-    });
+        ctx.restore();
+      });
 
-    setTexts([]);
-    saveHistory();
-  }, []);
+      setTexts([]);
+      saveHistory();
+    },
+    [saveHistory, drawingCanvasRef, setTexts]
+  );
 
   const checkTrashZoneCollision = useCallback(
     (screenX: number, screenY: number) => {

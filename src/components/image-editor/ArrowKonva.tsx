@@ -12,7 +12,7 @@ import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaArrow {
   id: string;
-  points: number[]; // [x1, y1, x2, y2]
+  points: number[];
   stroke: string;
   strokeWidth: number;
   draggable: boolean;
@@ -518,7 +518,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               points={arrow.points}
               stroke={arrow.stroke}
               strokeWidth={arrow.strokeWidth}
-              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)} // Increases clickable area
+              hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
               dash={getDashPattern(strokeStyle, brushSize)}
               pointerLength={15}
