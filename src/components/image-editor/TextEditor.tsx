@@ -36,6 +36,8 @@ interface TextEditorProps {
   onFlatten: (texts: KonvaTextShape[]) => void;
   onElementSelect?: (elementId: string, elementType: string) => void;
   onElementDeselect?: () => void;
+  checkTrashZoneCollision?: (screenX: number, screenY: number) => boolean;
+  updateTrashZoneState?: (isOver: boolean) => void;
 }
 
 export interface TextEditorHandle {
@@ -57,6 +59,8 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       onFlatten,
       onElementSelect,
       onElementDeselect,
+      checkTrashZoneCollision,
+      updateTrashZoneState,
     },
     ref
   ) => {
@@ -119,41 +123,59 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       }
     }, [selectedId, texts]);
 
-    // const handleDoubleTap = (e: any, id: string) => {
-    //   const now = Date.now();
-    //   const DOUBLE_TAP_DELAY = 300; // milliseconds
+    const handleDoubleTap = (e: any, id: string) => {
+      const now = Date.now();
+      const DOUBLE_TAP_DELAY = 300; // milliseconds
 
-    //   if (tapTimeout) {
-    //     clearTimeout(tapTimeout);
-    //     setTapTimeout(null);
-    //   }
+      if (tapTimeout) {
+        clearTimeout(tapTimeout);
+        setTapTimeout(null);
+      }
 
-    //   if (now - lastTap < DOUBLE_TAP_DELAY) {
-    //     // Double tap detected
-    //     setTapCount(0);
-    //     setLastTap(0);
-    //     handleDblClick(e, id);
-    //   } else {
-    //     // First tap
-    //     setLastTap(now);
-    //     setTapCount(1);
+      if (now - lastTap < DOUBLE_TAP_DELAY) {
+        // Double tap detected
+        setTapCount(0);
+        setLastTap(0);
+        handleDblClick(e, id);
+      } else {
+        // First tap
+        setLastTap(now);
+        setTapCount(1);
 
-    //     // Set a timeout to reset if no second tap
-    //     const timeout = setTimeout(() => {
-    //       setTapCount(0);
-    //       setLastTap(0);
-    //       setTapTimeout(null);
-    //     }, DOUBLE_TAP_DELAY);
+        // Set a timeout to reset if no second tap
+        const timeout = setTimeout(() => {
+          setTapCount(0);
+          setLastTap(0);
+          setTapTimeout(null);
+        }, DOUBLE_TAP_DELAY);
 
-    //     setTapTimeout(timeout);
+        setTapTimeout(timeout);
 
-    //     // Still handle normal selection
-    //     setSelectedId(id);
-    //     if (onElementSelect) {
-    //       onElementSelect(id, "text");
-    //     }
-    //   }
-    // };
+        // Still handle normal selection
+        setSelectedId(id);
+        if (onElementSelect) {
+          onElementSelect(id, "text");
+        }
+      }
+    };
+
+    const handleDragMove = (e: any, id: string) => {
+      const stage = e.target.getStage();
+      const node = e.target;
+      const { x, y } = node.position();
+
+      // Get screen coordinates for trash detection
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check collision with trash zone
+      if (checkTrashZoneCollision && updateTrashZoneState) {
+        const isOverTrash = checkTrashZoneCollision(screenX, screenY);
+        updateTrashZoneState(isOverTrash);
+      }
+    };
 
     // Drag handler
     const handleDragEnd = (e: any, id: string) => {
@@ -170,24 +192,21 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       const screenY = stageRect.top + y;
 
       // Check if dropped on trash zone
-      const trashZone = document.getElementById("trash-zone");
-      if (trashZone) {
-        const trashRect = trashZone.getBoundingClientRect();
+      if (
+        checkTrashZoneCollision &&
+        checkTrashZoneCollision(screenX, screenY)
+      ) {
+        // Delete the element
+        setTexts((arr) => arr.filter((t) => t.id !== id));
+        setSelectedId(null);
 
-        // Check if the text overlaps with trash zone (with tolerance)
-        const tolerance = 50;
-        if (
-          screenX + 50 >= trashRect.left - tolerance &&
-          screenX - 50 <= trashRect.right + tolerance &&
-          screenY + 25 >= trashRect.top - tolerance &&
-          screenY - 25 <= trashRect.bottom + tolerance
-        ) {
-          // Delete the text
-          setTexts((arr) => arr.filter((t) => t.id !== id));
-          setSelectedId(null);
-          if (onElementDeselect) onElementDeselect();
-          return;
+        if (trRef.current) {
+          trRef.current.nodes([]);
+          trRef.current.getLayer().batchDraw();
         }
+
+        if (onElementDeselect) onElementDeselect();
+        return;
       }
 
       // Normal drag behavior - update text position
@@ -410,9 +429,10 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                     if (onElementSelect) {
                       onElementSelect(t.id, "text");
                     }
-                    // handleDoubleTap(e, t.id);
+                    handleDoubleTap(e, t.id);
                   }}
                   onDblClick={(e) => handleDblClick(e, t.id)}
+                  onDragMove={(e) => handleDragMove(e, t.id)}
                   onDragEnd={(e) => handleDragEnd(e, t.id)}
                 >
                   <Rect

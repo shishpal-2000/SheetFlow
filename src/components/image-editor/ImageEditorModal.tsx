@@ -592,7 +592,7 @@ export default function ImageEditorModal({
       if (!trashZone) return false;
 
       const trashRect = trashZone.getBoundingClientRect();
-      const tolerance = 50;
+      const tolerance = 80;
 
       return (
         screenX >= trashRect.left - tolerance &&
@@ -818,7 +818,37 @@ export default function ImageEditorModal({
     saveHistory();
   };
 
+  const hasDrawingCanvasContent = useCallback(() => {
+    const drawingCanvas = drawingCanvasRef.current;
+    const ctx = drawingCanvas?.getContext("2d");
+    if (!drawingCanvas || !ctx) return false;
+
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      drawingCanvas.width,
+      drawingCanvas.height
+    );
+    return imageData.data.some((pixel, index) => {
+      return index % 4 === 3 && pixel !== 0; // Check alpha channel
+    });
+  }, []);
+
   const handleToolChange = (tool: DrawingTool) => {
+    const drawingCanvas = drawingCanvasRef.current;
+    const ctx = drawingCanvas?.getContext("2d");
+    let currentDrawingState: ImageData | null = null;
+
+    if (drawingCanvas && ctx) {
+      // Save current drawing canvas state
+      currentDrawingState = ctx.getImageData(
+        0,
+        0,
+        drawingCanvas.width,
+        drawingCanvas.height
+      );
+    }
+
     // If leaving rectangle tool, flatten rectangles before switching
     if (activeTool === "rectangle" && konvaRectRef.current) {
       konvaRectRef.current.flatten();
@@ -859,6 +889,12 @@ export default function ImageEditorModal({
       setTextInputPosition(null);
       setText("");
     }
+
+    // Clear any active selections when switching tools
+    setSelectedElementId(null);
+    setSelectedElementType(null);
+    setShowTrashIcon(false);
+    setIsDraggedOverTrash(false);
 
     setIsTextToolActive(tool === "text");
     setActiveTool(tool);
@@ -1490,7 +1526,7 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges) {
+                  if (hasChanges && activeTool !== "crop") {
                     setShowCropConfirm(true);
                   } else {
                     handleToolChange("crop");
@@ -1515,7 +1551,7 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges) {
+                  if (hasChanges && activeTool !== "curve") {
                     setShowCurveConfirm(true);
                   } else {
                     setActiveTool("curve");
@@ -1540,7 +1576,7 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges) {
+                  if (hasChanges && activeTool !== "curve-arrow") {
                     setShowCurveArrowConfirm(true);
                   } else {
                     setActiveTool("curve-arrow");
@@ -1929,6 +1965,8 @@ export default function ImageEditorModal({
                     setSelectedElementId(null);
                     setSelectedElementType(null);
                   }}
+                  checkTrashZoneCollision={checkTrashZoneCollision}
+                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 
@@ -1952,6 +1990,8 @@ export default function ImageEditorModal({
                     setSelectedElementId(null);
                     setSelectedElementType(null);
                   }}
+                  checkTrashZoneCollision={checkTrashZoneCollision}
+                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 
@@ -1975,6 +2015,8 @@ export default function ImageEditorModal({
                     setSelectedElementId(null);
                     setSelectedElementType(null);
                   }}
+                  checkTrashZoneCollision={checkTrashZoneCollision}
+                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 
@@ -1999,6 +2041,8 @@ export default function ImageEditorModal({
                     setSelectedElementId(null);
                     setSelectedElementType(null);
                   }}
+                  checkTrashZoneCollision={checkTrashZoneCollision}
+                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 

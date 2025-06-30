@@ -116,10 +116,6 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
         case "dotted":
           ctx.setLineDash([brushSize, brushSize]);
           break;
-        case "double":
-          ctx.setLineDash([]);
-          ctx.lineWidth = brushSize / 2;
-          break;
         default:
           ctx.setLineDash([]);
       }
@@ -157,7 +153,7 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(mousePos.x, mousePos.y);
-      ctx.strokeStyle = "#aaa";
+      ctx.strokeStyle = "#070707"; // Preview line color
       ctx.setLineDash([brushSize, brushSize]);
       ctx.lineWidth = brushSize;
       ctx.stroke();

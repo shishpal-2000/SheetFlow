@@ -35,6 +35,8 @@ interface KonvaCircleProps {
   onFlatten: (circles: KonvaCircleShape[]) => void;
   onElementSelect?: (elementId: string, elementType: string) => void;
   onElementDeselect?: () => void;
+  checkTrashZoneCollision?: (screenX: number, screenY: number) => boolean;
+  updateTrashZoneState?: (isOver: boolean) => void;
 }
 
 export interface KonvaCircleHandle {
@@ -56,6 +58,8 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       onFlatten,
       onElementSelect,
       onElementDeselect,
+      checkTrashZoneCollision,
+      updateTrashZoneState,
     },
     ref
   ) => {
@@ -175,6 +179,24 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       );
     };
 
+    const handleDragMove = (e: any, id: string) => {
+      const stage = e.target.getStage();
+      const node = e.target;
+      const { x, y } = node.position();
+
+      // Get screen coordinates for trash detection
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+      const screenX = stageRect.left + x;
+      const screenY = stageRect.top + y;
+
+      // Check collision with trash zone
+      if (checkTrashZoneCollision && updateTrashZoneState) {
+        const isOverTrash = checkTrashZoneCollision(screenX, screenY);
+        updateTrashZoneState(isOverTrash);
+      }
+    };
+
     const handleDragEnd = (e: any, id: string) => {
       const stage = e.target.getStage();
       const node = e.target;
@@ -187,23 +209,15 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       const screenY = stageRect.top + y;
 
       // Check if dropped on trash zone
-      const trashZone = document.getElementById("trash-zone");
-      if (trashZone) {
-        const trashRect = trashZone.getBoundingClientRect();
-        const tolerance = 50;
-
-        if (
-          screenX + 25 >= trashRect.left - tolerance &&
-          screenX - 25 <= trashRect.right + tolerance &&
-          screenY + 25 >= trashRect.top - tolerance &&
-          screenY - 25 <= trashRect.bottom + tolerance
-        ) {
-          // Delete the circle
-          setCircles((circles) => circles.filter((c) => c.id !== id));
-          setSelectedId(null);
-          if (onElementDeselect) onElementDeselect();
-          return;
-        }
+      if (
+        checkTrashZoneCollision &&
+        checkTrashZoneCollision(screenX, screenY)
+      ) {
+        // Delete the element
+        setCircles((circles) => circles.filter((c) => c.id !== id));
+        setSelectedId(null);
+        if (onElementDeselect) onElementDeselect();
+        return;
       }
 
       // Normal drag behavior
@@ -303,6 +317,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               fill={circle.fill}
               onClick={() => handleCircleClick(circle.id)}
               onTap={() => handleCircleClick(circle.id)}
+              onDragMove={(e) => handleDragMove(e, circle.id)}
               onDragEnd={(e) => handleDragEnd(e, circle.id)}
               onTransformEnd={(e) => handleTransformEnd(e, circle.id)}
             />

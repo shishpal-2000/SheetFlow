@@ -20,12 +20,12 @@ To get started, take a look at src/app/page.tsx.
 
 **Bugs**
 
-- [ ] When you click on the image, the canvas is not centered
+- [x] When you click on the image, the canvas is not centered
 - [x] when we click to open the image, below cell get selected
 - [x] For some images the curve line is not created at mouse position but with some offset.
 - [ ] In Mobile view the Curve tool is only working correctly when a stylus is used - the surface area of the finger tips is making it hard to draw with fingers.
 - [x] The canvas is taking full width of its parent div's parent div.
-- [ ] We are able to draw outside the image also.
+- [x] We are able to draw outside the image also.
 - [x] The curve arrow tools arrow heads are not drawn correctly.
 - [ ] The images are stored in local storage which have some limitations.
 
@@ -36,3 +36,11 @@ To get started, take a look at src/app/page.tsx.
 - [x] Undo, Redo, Filter, Download button in one horizontal row (above image)
 - [x] Undo Redo button in larger screens
 - [x] Save Changes, Cancel, Apply Filter, Download button in one horizontal line (larger screen)
+
+**Testing Bugs**
+
+- [ ] Text not editing in mobile view.
+- [ ] icons for curve and curve arrow are same.
+- [ ] After applying crop, the image is not editatble in actual mobile devices.
+- [ ] cancel button should contain a confirmation dialog to discard changes.
+- [ ] The stroke style drpdown appears on top sometimes in actual mobile device.

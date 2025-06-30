@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { Stage, Layer, Arrow, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
+import { getDashPattern } from "@/utils/getStrokePattern";
 
 export interface KonvaDoubleArrowShape {
   id: string;
@@ -29,6 +30,8 @@ interface KonvaDoubleArrowProps {
   onFlatten: (arrows: KonvaDoubleArrowShape[]) => void;
   onElementSelect?: (elementId: string, elementType: string) => void;
   onElementDeselect?: () => void;
+  checkTrashZoneCollision?: (screenX: number, screenY: number) => boolean;
+  updateTrashZoneState?: (isOver: boolean) => void;
 }
 
 export interface KonvaDoubleArrowHandle {
@@ -52,6 +55,8 @@ const KonvaDoubleArrow = forwardRef<
       onFlatten,
       onElementSelect,
       onElementDeselect,
+      checkTrashZoneCollision,
+      updateTrashZoneState,
     },
     ref
   ) => {
@@ -80,21 +85,6 @@ const KonvaDoubleArrow = forwardRef<
         x: (p1.x + p2.x) / 2,
         y: (p1.y + p2.y) / 2,
       };
-    };
-
-    const getDashPattern = (style: StrokeStyle) => {
-      switch (style) {
-        case "solid":
-          return [];
-        case "dashed":
-          return [brushSize * 3, brushSize * 2];
-        case "dotted":
-          return [brushSize, brushSize];
-        case "double":
-          return []; // For double style, we'll handle differently
-        default:
-          return [];
-      }
     };
 
     useImperativeHandle(ref, () => ({
@@ -393,11 +383,40 @@ const KonvaDoubleArrow = forwardRef<
       );
     };
 
+    const handleDragMove = (e: any, id: string) => {
+      const stage = e.target.getStage();
+      const node = e.target;
+      const { x, y } = node.position();
+
+      // Get the arrow's points to calculate center
+      const oldPoints = node.points();
+      const centerX = (oldPoints[0] + oldPoints[2]) / 2;
+      const centerY = (oldPoints[1] + oldPoints[3]) / 2;
+
+      // Get screen coordinates for trash detection
+      const stageContainer = stage.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+
+      // Use the arrow's center point plus drag offset
+      const screenX = stageRect.left + centerX + x;
+      const screenY = stageRect.top + centerY + y;
+
+      // Check collision with trash zone
+      if (checkTrashZoneCollision && updateTrashZoneState) {
+        const isOverTrash = checkTrashZoneCollision(screenX, screenY);
+        updateTrashZoneState(isOverTrash);
+      }
+    };
+
     const handleDragEnd = (e: any, id: string) => {
       const node = e.target;
       const stage = e.target.getStage();
       const x = node.x();
       const y = node.y();
+
+      if (updateTrashZoneState) {
+        updateTrashZoneState(false);
+      }
 
       // Get the stage's position on screen
       const stageContainer = stage.container();
@@ -413,24 +432,15 @@ const KonvaDoubleArrow = forwardRef<
       const screenY = stageRect.top + centerY + y;
 
       // Check if dropped on trash zone
-      const trashZone = document.getElementById("trash-zone");
-      if (trashZone) {
-        const trashRect = trashZone.getBoundingClientRect();
-
-        // Check if the arrow center overlaps with trash zone (with tolerance)
-        const tolerance = 50;
-        if (
-          screenX >= trashRect.left - tolerance &&
-          screenX <= trashRect.right + tolerance &&
-          screenY >= trashRect.top - tolerance &&
-          screenY <= trashRect.bottom + tolerance
-        ) {
-          // Delete the arrow
-          setArrows((arrs) => arrs.filter((a) => a.id !== id));
-          setSelectedId(null);
-          if (onElementDeselect) onElementDeselect();
-          return;
-        }
+      if (
+        checkTrashZoneCollision &&
+        checkTrashZoneCollision(screenX, screenY)
+      ) {
+        // Delete the element
+        setArrows((arrs) => arrs.filter((a) => a.id !== id));
+        setSelectedId(null);
+        if (onElementDeselect) onElementDeselect();
+        return;
       }
 
       // Normal drag behavior - update arrow position
@@ -517,7 +527,7 @@ const KonvaDoubleArrow = forwardRef<
               strokeWidth={arrow.strokeWidth}
               hitStrokeWidth={Math.max(90, arrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerLength={15}
               pointerWidth={15}
               fill={arrow.stroke}
@@ -530,6 +540,7 @@ const KonvaDoubleArrow = forwardRef<
                 e.cancelBubble = true;
                 handleArrowClick(arrow.id);
               }}
+              onDragMove={(e) => handleDragMove(e, arrow.id)}
               onDragEnd={(e) => handleDragEnd(e, arrow.id)}
               onTransformEnd={(e) => handleTransformEnd(e, arrow.id)}
               pointerAtBeginning={true}
@@ -546,7 +557,7 @@ const KonvaDoubleArrow = forwardRef<
               pointerLength={15}
               pointerWidth={15}
               fill={newArrow.stroke}
-              dash={getDashPattern(strokeStyle)}
+              dash={getDashPattern(strokeStyle, brushSize)}
               pointerAtBeginning={true}
               pointerAtEnding={true}
             />
