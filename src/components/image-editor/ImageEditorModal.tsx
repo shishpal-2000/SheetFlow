@@ -187,6 +187,11 @@ export default function ImageEditorModal({
   const [showTrashIcon, setShowTrashIcon] = useState(false);
   const [isDraggedOverTrash, setIsDraggedOverTrash] = useState(false);
 
+  const [canvasDimensions, setCanvasDimensions] = useState({
+    width: 420,
+    height: 750,
+  });
+
   const [imageDrawParams, setImageDrawParams] = useState<{
     offsetX: number;
     offsetY: number;
@@ -227,6 +232,33 @@ export default function ImageEditorModal({
 
     return () => window.removeEventListener("resize", checkScreenSize);
   }, [selectedElementId]);
+
+  // Update canvas dimensions whenever they change
+  useEffect(() => {
+    const updateDimensions = () => {
+      const drawingCanvas = drawingCanvasRef.current;
+      if (drawingCanvas) {
+        setCanvasDimensions({
+          width: drawingCanvas.width,
+          height: drawingCanvas.height,
+        });
+      }
+    };
+
+    // Initial update
+    updateDimensions();
+
+    // Create a ResizeObserver to watch for canvas size changes
+    const drawingCanvas = drawingCanvasRef.current;
+    if (drawingCanvas) {
+      const resizeObserver = new ResizeObserver(updateDimensions);
+      resizeObserver.observe(drawingCanvas);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, []);
 
   const handleKonvaRectFlatten = useCallback((rects: any[]) => {
     if (!drawingCanvasRef.current) return;
@@ -566,6 +598,17 @@ export default function ImageEditorModal({
     [saveHistory, drawingCanvasRef, setTexts]
   );
 
+  const getCurrentCanvasDimensions = useCallback(() => {
+    const drawingCanvas = drawingCanvasRef.current;
+    if (drawingCanvas) {
+      return {
+        width: drawingCanvas.width,
+        height: drawingCanvas.height,
+      };
+    }
+    return { width: 420, height: 750 }; // fallback
+  }, []);
+
   const checkTrashZoneCollision = useCallback(
     (screenX: number, screenY: number) => {
       const trashZone = document.getElementById("trash-zone");
@@ -624,6 +667,12 @@ export default function ImageEditorModal({
       baseCanvas.height = canvasHeight;
       drawingCanvas.width = canvasWidth;
       drawingCanvas.height = canvasHeight;
+
+      // Update the state to trigger Konva re-render
+      setCanvasDimensions({
+        width: canvasWidth,
+        height: canvasHeight,
+      });
 
       // Clear both canvases
       baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -1338,10 +1387,10 @@ export default function ImageEditorModal({
     // Create temporary canvases for both base and drawing layers
     const tempBaseCanvas = document.createElement("canvas");
     const tempDrawingCanvas = document.createElement("canvas");
-    tempBaseCanvas.width = cropArea.width;
-    tempBaseCanvas.height = cropArea.height;
-    tempDrawingCanvas.width = cropArea.width;
-    tempDrawingCanvas.height = cropArea.height;
+    tempBaseCanvas.width = validCropArea.width;
+    tempBaseCanvas.height = validCropArea.height;
+    tempDrawingCanvas.width = validCropArea.width;
+    tempDrawingCanvas.height = validCropArea.height;
 
     const tempBaseCtx = tempBaseCanvas.getContext("2d");
     const tempDrawingCtx = tempDrawingCanvas.getContext("2d");
@@ -1350,27 +1399,42 @@ export default function ImageEditorModal({
     // Copy the cropped portions to the temp canvases
     tempBaseCtx.drawImage(
       baseCanvas,
-      cropArea.x,
-      cropArea.y,
-      tempBaseCanvas.width,
-      tempBaseCanvas.height,
+      validCropArea.x,
+      validCropArea.y,
+      validCropArea.width,
+      validCropArea.height,
       0,
       0,
-      tempBaseCanvas.width,
-      tempBaseCanvas.height
+      validCropArea.width,
+      validCropArea.height
     );
 
-    tempDrawingCtx.drawImage(
-      drawingCanvas,
-      cropArea.x,
-      cropArea.y,
-      tempDrawingCanvas.width,
-      tempDrawingCanvas.height,
+    // For the drawing canvas, we need to be careful not to copy the crop overlay
+    // Check if the drawing canvas has actual drawing content (not just overlay)
+    const drawingImageData = drawingCtx.getImageData(
       0,
       0,
-      tempDrawingCanvas.width,
-      tempDrawingCanvas.height
+      drawingCanvas.width,
+      drawingCanvas.height
     );
+    const hasActualDrawing = drawingImageData.data.some((value, index) => {
+      // Look for fully opaque pixels (not semi-transparent overlay pixels)
+      return index % 4 === 3 && value === 255;
+    });
+
+    if (!hasActualDrawing) {
+      tempDrawingCtx.drawImage(
+        baseCanvas,
+        validCropArea.x,
+        validCropArea.y,
+        validCropArea.width,
+        validCropArea.height,
+        0,
+        0,
+        validCropArea.width,
+        validCropArea.height
+      );
+    }
 
     // Resize both canvases
     baseCanvas.width = tempBaseCanvas.width;
@@ -1378,13 +1442,33 @@ export default function ImageEditorModal({
     drawingCanvas.width = tempDrawingCanvas.width;
     drawingCanvas.height = tempDrawingCanvas.height;
 
+    // Clear both canvases completely
+    baseCtx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+    drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+    // Reset composite operations to default
+    baseCtx.globalCompositeOperation = "source-over";
+    drawingCtx.globalCompositeOperation = "source-over";
+
     // Draw the cropped images back
     baseCtx.drawImage(tempBaseCanvas, 0, 0);
-    drawingCtx.drawImage(tempDrawingCanvas, 0, 0);
+
+    if (hasActualDrawing) {
+      drawingCtx.drawImage(tempDrawingCanvas, 0, 0);
+    }
+
+    // Update canvas dimensions state to trigger Konva re-render
+    setCanvasDimensions({
+      width: drawingCanvas.width,
+      height: drawingCanvas.height,
+    });
 
     // Clear crop area and reset cropping state
     setCropArea(null);
     setIsCropping(false);
+    setDragStart(null);
+
+    setActiveTool(null);
 
     // Save to history
     saveHistory();
@@ -1746,7 +1830,6 @@ export default function ImageEditorModal({
                         );
                       }
                     }}
-                    disabled={!cropArea}
                     className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
                   >
                     Cancel
@@ -1936,8 +2019,8 @@ export default function ImageEditorModal({
               {mounted && activeTool === "rectangle" && (
                 <KonvaRectangle
                   ref={konvaRectRef}
-                  width={drawingCanvasRef.current?.width || 420}
-                  height={drawingCanvasRef.current?.height || 750}
+                  width={getCurrentCanvasDimensions().width}
+                  height={getCurrentCanvasDimensions().height}
                   active={activeTool === "rectangle"}
                   color={currentColor}
                   brushSize={brushSize}
@@ -1984,8 +2067,8 @@ export default function ImageEditorModal({
               {mounted && activeTool === "circle" && (
                 <KonvaCircle
                   ref={konvaCircleRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
+                  width={getCurrentCanvasDimensions().width}
+                  height={getCurrentCanvasDimensions().height}
                   active={activeTool === "circle"}
                   color={currentColor}
                   brushSize={brushSize}
@@ -2010,8 +2093,8 @@ export default function ImageEditorModal({
               {mounted && activeTool === "arrow" && (
                 <ArrowKonva
                   ref={konvaArrowRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
+                  width={getCurrentCanvasDimensions().width}
+                  height={getCurrentCanvasDimensions().height}
                   active={activeTool === "arrow"}
                   color={currentColor}
                   brushSize={brushSize}
@@ -2035,8 +2118,8 @@ export default function ImageEditorModal({
               {mounted && activeTool === "double-arrow" && (
                 <KonvaDoubleArrow
                   ref={konvaDoubleArrowRef}
-                  width={drawingCanvasRef.current?.width || 800}
-                  height={drawingCanvasRef.current?.height || 600}
+                  width={getCurrentCanvasDimensions().width}
+                  height={getCurrentCanvasDimensions().height}
                   active={activeTool === "double-arrow"}
                   color={currentColor}
                   brushSize={brushSize}
@@ -2060,8 +2143,8 @@ export default function ImageEditorModal({
               {mounted && activeTool === "text" && (
                 <TextEditor
                   ref={textEditorRef}
-                  width={drawingCanvasRef.current?.width || 420}
-                  height={drawingCanvasRef.current?.height || 750}
+                  width={getCurrentCanvasDimensions().width}
+                  height={getCurrentCanvasDimensions().height}
                   active={activeTool === "text"}
                   color={currentColor}
                   backgroundColor={backgroundColor}
@@ -2092,7 +2175,7 @@ export default function ImageEditorModal({
                     top: `${eraserCursor.y - brushSize / 2}px`,
                     width: `${brushSize}px`,
                     height: `${brushSize}px`,
-                    border: "2px solid #0707078",
+                    border: "2px solid #07070780",
                     borderRadius: "50%",
                     pointerEvents: "none",
                     background: "rgba(255,255,255,0.1)",

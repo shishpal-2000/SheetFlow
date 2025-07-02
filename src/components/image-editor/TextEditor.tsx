@@ -97,6 +97,50 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       },
     }));
 
+    useEffect(() => {
+      if (stageRef.current) {
+        const stage = stageRef.current;
+
+        // Force the stage to use the exact dimensions passed as props
+        stage.width(width);
+        stage.height(height);
+        stage.size({ width, height });
+
+        // Force re-render
+        stage.batchDraw();
+
+        console.log("TextEditor stage dimensions updated:", { width, height });
+      }
+    }, [width, height]);
+
+    useEffect(() => {
+      if (stageRef.current && active) {
+        const stage = stageRef.current;
+
+        // Get the actual drawing canvas dimensions
+        const drawingCanvas = document.querySelector(
+          'canvas[class*="absolute w-full h-full"]:last-of-type'
+        ) as HTMLCanvasElement;
+
+        if (drawingCanvas) {
+          const actualWidth = drawingCanvas.width;
+          const actualHeight = drawingCanvas.height;
+
+          console.log("Drawing canvas actual dimensions:", {
+            actualWidth,
+            actualHeight,
+          });
+          console.log("TextEditor received dimensions:", { width, height });
+
+          // Update stage to match actual canvas
+          stage.width(actualWidth);
+          stage.height(actualHeight);
+          stage.size({ width: actualWidth, height: actualHeight });
+          stage.batchDraw();
+        }
+      }
+    }, [active, width, height]);
+
     // Keyboard delete
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {

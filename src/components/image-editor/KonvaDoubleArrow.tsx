@@ -95,6 +95,15 @@ const KonvaDoubleArrow = forwardRef<
       },
     }));
 
+    useEffect(() => {
+      if (stageRef.current) {
+        const stage = stageRef.current;
+        stage.width(width);
+        stage.height(height);
+        stage.batchDraw();
+      }
+    }, [width, height]);
+
     // Keyboard delete
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
