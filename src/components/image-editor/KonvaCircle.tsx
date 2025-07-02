@@ -344,7 +344,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
           )}
           <Transformer
             ref={trRef}
-            rotateEnabled={true}
+            rotateEnabled={false}
             enabledAnchors={[
               "top-left",
               "top-right",

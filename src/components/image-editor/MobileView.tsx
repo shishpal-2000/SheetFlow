@@ -34,6 +34,7 @@ import {
 } from "../ui/select";
 import Curve from "../ui/Icons/curve";
 import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
+import { useEffect } from "react";
 
 interface MobileViewProps {
   undo: () => void;
@@ -193,7 +194,7 @@ const MobileView = ({
             className="flex flex-col px-2 py-1 gap-1 min-w-[40px] sm:min-w-[80px] h-max"
           >
             <PenTool className="h-4 w-4" />
-            {/* <Curve className="h-4 w-4" /> */}
+
             <span className="sr-only">Curve</span>
           </Button>
           <Button
