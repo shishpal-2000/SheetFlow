@@ -25,6 +25,7 @@ interface KonvaDoubleArrowProps {
   color: string;
   brushSize: number;
   strokeStyle: StrokeStyle;
+  onAdd?: (arrow: KonvaDoubleArrowShape) => void; // Callback when a new arrow is added
   arrows: KonvaDoubleArrowShape[];
   setArrows: React.Dispatch<React.SetStateAction<KonvaDoubleArrowShape[]>>;
   onFlatten: (arrows: KonvaDoubleArrowShape[]) => void;
@@ -50,6 +51,7 @@ const KonvaDoubleArrow = forwardRef<
       color,
       brushSize,
       strokeStyle,
+      onAdd,
       arrows,
       setArrows,
       onFlatten,
@@ -301,7 +303,17 @@ const KonvaDoubleArrow = forwardRef<
         e.evt.preventDefault();
       }
 
+      // Calculate arrow length to validate if it's substantial enough
+      const [x1, y1, x2, y2] = newArrow.points;
+      const arrowLength = Math.sqrt(
+        Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+      );
+
       setArrows((arrs) => [...arrs, newArrow]);
+
+      if (onAdd) {
+        if (arrowLength > 10) onAdd(newArrow);
+      }
       setNewArrow(null);
     };
 

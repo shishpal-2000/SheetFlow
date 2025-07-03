@@ -31,6 +31,7 @@ interface TextEditorProps {
   backgroundColor: string;
   fontSize: number;
   fontFamily: string;
+  onAdd?: (text: KonvaTextShape) => void; // Callback when a new text is added
   texts: KonvaTextShape[];
   setTexts: React.Dispatch<React.SetStateAction<KonvaTextShape[]>>;
   onFlatten: (texts: KonvaTextShape[]) => void;
@@ -54,6 +55,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       backgroundColor,
       fontSize,
       fontFamily,
+      onAdd,
       texts,
       setTexts,
       onFlatten,
@@ -391,20 +393,23 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
               } else {
                 // Add new
                 const newId = `text-${Date.now()}`;
-                setTexts((arr) => [
-                  ...arr,
-                  {
-                    id: newId,
-                    x: editingText.x,
-                    y: editingText.y,
-                    text: editingText.value,
-                    fontSize,
-                    fontFamily,
-                    fill: color,
-                    backgroundColor: backgroundColor,
-                    draggable: true,
-                  },
-                ]);
+                const newText = {
+                  id: newId,
+                  x: editingText.x,
+                  y: editingText.y,
+                  text: editingText.value,
+                  fontSize,
+                  fontFamily,
+                  fill: color,
+                  backgroundColor: backgroundColor,
+                  draggable: true,
+                };
+
+                setTexts((arr) => [...arr, newText]);
+
+                if (onAdd && editingText.value.trim().length > 0) {
+                  onAdd(newText);
+                }
 
                 // Select the newly created text
                 setSelectedId(newId);

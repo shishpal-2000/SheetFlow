@@ -32,6 +32,7 @@ interface KonvaRectangleProps {
   brushSize: number;
   strokeStyle: StrokeStyle;
   backgroundColor?: string;
+  onAdd?: (rect: KonvaRectangle) => void;
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
@@ -55,6 +56,9 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       brushSize,
       strokeStyle,
       backgroundColor,
+      onAdd,
+      rectangles,
+      setRectangles,
       onFlatten,
       onElementSelect,
       onElementDeselect,
@@ -63,7 +67,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
     },
     ref
   ) => {
-    const [rectangles, setRectangles] = useState<KonvaRectangle[]>([]);
+    // const [rectangles, setRectangles] = useState<KonvaRectangle[]>([]);
     const [newRect, setNewRect] = useState<KonvaRectangle | null>(null);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const stageRef = useRef<any>(null);
@@ -105,7 +109,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       };
       window.addEventListener("keydown", handleKeyDown);
       return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedId]);
+    }, [selectedId, setRectangles, onElementDeselect]);
 
     // Transformer selection
     useEffect(() => {
@@ -205,6 +209,9 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       }
 
       setRectangles((rects) => [...rects, newRect]);
+      if (onAdd) {
+        if (newRect.width > 5 && newRect.height > 5) onAdd(newRect);
+      }
       setNewRect(null);
     };
 

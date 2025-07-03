@@ -25,6 +25,7 @@ interface KonvaArrowProps {
   color: string;
   brushSize: number;
   strokeStyle: StrokeStyle;
+  onAdd?: (arrow: KonvaArrow) => void; // Callback when a new arrow is added
   arrows: KonvaArrow[];
   setArrows: React.Dispatch<React.SetStateAction<KonvaArrow[]>>;
   onFlatten: (arrows: KonvaArrow[]) => void;
@@ -47,6 +48,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       color,
       brushSize,
       strokeStyle,
+      onAdd,
       arrows,
       setArrows,
       onFlatten,
@@ -74,7 +76,6 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       },
     }));
 
-    // jai maa kali
     const constrainToBounds = (
       points: number[],
       canvasWidth: number,
@@ -220,7 +221,16 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         e.evt.preventDefault();
       }
 
+      // Calculate arrow length to validate if it's substantial enough
+      const [x1, y1, x2, y2] = newArrow.points;
+      const arrowLength = Math.sqrt(
+        Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+      );
+
       setArrows((arrs) => [...arrs, newArrow]);
+      if (onAdd) {
+        if (arrowLength > 10) onAdd(newArrow);
+      }
       setNewArrow(null);
     };
 

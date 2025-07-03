@@ -30,6 +30,7 @@ interface KonvaCircleProps {
   brushSize: number;
   strokeStyle: StrokeStyle;
   backgroundColor?: string; // Optional background color prop
+  onAdd?: (circle: KonvaCircleShape) => void; // Callback when a new circle is added
   circles: KonvaCircleShape[];
   setCircles: React.Dispatch<React.SetStateAction<KonvaCircleShape[]>>;
   onFlatten: (circles: KonvaCircleShape[]) => void;
@@ -53,6 +54,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       brushSize,
       strokeStyle,
       backgroundColor,
+      onAdd,
       circles,
       setCircles,
       onFlatten,
@@ -159,6 +161,10 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       }
 
       setCircles((cs) => [...cs, newCircle]);
+
+      if (onAdd) {
+        if (newCircle.radius > 5) onAdd(newCircle);
+      }
       setNewCircle(null);
     };
 
@@ -172,14 +178,18 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
       const scaleX = node.scaleX();
+      
+      const newRadius = Math.max(node.radius() * scaleX, 5);
+      
       node.scaleX(1);
-      node.scaleY(1);
+      // node.scaleY(1);
+
       setCircles((cs) =>
         cs.map((c) =>
           c.id === id
             ? {
                 ...c,
-                radius: c.radius * scaleX,
+                radius: newRadius,
                 x: node.x(),
                 y: node.y(),
               }

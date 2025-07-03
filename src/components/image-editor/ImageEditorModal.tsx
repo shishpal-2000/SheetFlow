@@ -81,7 +81,7 @@ import { CurveTool } from "./CurveTool";
 import CurveArrowTool from "./CurveArrowTool";
 import MobileView from "./MobileView";
 import { TbArrowCurveRight } from "react-icons/tb";
-import { set } from "date-fns";
+import { useHistoryManager } from "@/hooks/useHistoryManager";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -113,10 +113,10 @@ export type DrawingTool =
   | "line"
   | "arrow"
   | "double-arrow"
-  | "crop"
   | "text"
   | "curve"
-  | "curve-arrow";
+  | "curve-arrow"
+  | "crop";
 
 const minBrushSize = 1;
 const maxBrushSize = 20;
@@ -132,8 +132,6 @@ export default function ImageEditorModal({
   const [activeTool, setActiveTool] = useState<DrawingTool | null>(null);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
-  const [history, setHistory] = useState<ImageData[]>([]);
-  const [historyStep, setHistoryStep] = useState<number>(-1);
   const [fontSize, setFontSize] = useState<number>(22);
   const [textInputPosition, setTextInputPosition] = useState<Point | null>(
     null
@@ -144,13 +142,51 @@ export default function ImageEditorModal({
   const [showCurveConfirm, setShowCurveConfirm] = useState(false);
   const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
   const { toast } = useToast();
+  const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
+
+  // State for history management
+  // const [history, setHistory] = useState<ImageData[]>([]);
+  // const [historyStep, setHistoryStep] = useState<number>(-1);
+  const {
+    historyState,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    actionCount,
+    addAction,
+    createAction,
+    clearHistory,
+
+    // get konva states from history manager
+    rectangles,
+    setRectangles,
+    circles,
+    setCircles,
+    arrows,
+    setArrows,
+    doubleArrows,
+    setDoubleArrows,
+    texts,
+    setTexts,
+
+    // get refs from history manager
+    konvaRectRef,
+    konvaCircleRef,
+    konvaArrowRef,
+    konvaDoubleArrowRef,
+    textEditorRef,
+  } = useHistoryManager({
+    drawingCanvasRef,
+    baseCanvasRef,
+  });
 
   // Konva Rectangle state and ref
-  const [rectangles, setRectangles] = useState<any[]>([]);
-  const konvaRectRef = useRef<KonvaRectangleHandle>(null);
+  // const [rectangles, setRectangles] = useState<any[]>([]);
+  // const konvaRectRef = useRef<KonvaRectangleHandle>(null);
 
-  const [texts, setTexts] = useState<KonvaTextShape[]>([]);
-  const textEditorRef = useRef<TextEditorHandle>(null);
+  // const [texts, setTexts] = useState<KonvaTextShape[]>([]);
+  // const textEditorRef = useRef<TextEditorHandle>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("sans-serif");
 
   // Crop-related state
@@ -165,16 +201,16 @@ export default function ImageEditorModal({
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
 
   // Add state and ref for arrows
-  const [arrows, setArrows] = useState<KonvaArrow[]>([]);
-  const konvaArrowRef = useRef<KonvaArrowHandle>(null);
+  // const [arrows, setArrows] = useState<KonvaArrow[]>([]);
+  // const konvaArrowRef = useRef<KonvaArrowHandle>(null);
 
   // circles
-  const [circles, setCircles] = useState<KonvaCircleShape[]>([]);
-  const konvaCircleRef = useRef<KonvaCircleHandle>(null);
+  // const [circles, setCircles] = useState<KonvaCircleShape[]>([]);
+  // const konvaCircleRef = useRef<KonvaCircleHandle>(null);
 
   // Add state and ref for double arrows
-  const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
-  const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
+  // const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
+  // const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
   // Mobile view state for delete
   const [selectedElementId, setSelectedElementId] = useState<string | null>(
@@ -219,6 +255,19 @@ export default function ImageEditorModal({
   const handleEraserCursorHide = () => {
     setEraserCursor(null);
   };
+
+  // Debugging: Log history state changes
+  useEffect(() => {
+    console.log("History state updated:", {
+      totalActions: historyState.actions.length,
+      konvaActions: historyState.actions.filter((a) => a.target === "konva")
+        .length,
+      drawingActions: historyState.actions.filter((a) => a.target === "drawing")
+        .length,
+      baseActions: historyState.actions.filter((a) => a.target === "base")
+        .length,
+    });
+  }, [historyState.actions]);
 
   useEffect(() => {
     if (activeTool === "eraser") {
@@ -267,48 +316,144 @@ export default function ImageEditorModal({
     }
   }, []);
 
-  const handleKonvaRectFlatten = useCallback((rects: any[]) => {
-    if (!drawingCanvasRef.current) return;
-    const ctx = drawingCanvasRef.current.getContext("2d");
-    if (!ctx) return;
+  const handleKonvaRectAdd = useCallback(
+    (rectangle: any) => {
+      console.log("Recording rectangle action:", rectangle);
+      const action = createAction("konva", "ADD_RECTANGLE", {
+        elementType: "rectangle",
+        elementId: rectangle.id,
+        data: { ...rectangle, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
 
-    rects.forEach((r: any) => {
-      ctx.save(); // Save current state
+  const handleKonvaCircleAdd = useCallback(
+    (circle: any) => {
+      console.log("Recording circle action:", circle);
+      const action = createAction("konva", "ADD_CIRCLE", {
+        elementType: "circle",
+        elementId: circle.id,
+        data: { ...circle, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
 
-      // Set stroke style
-      ctx.strokeStyle = r.stroke;
-      ctx.lineWidth = r.strokeWidth;
-      ctx.fillStyle = r.fill || "transparent";
+  const handleKonvaArrowAdd = useCallback(
+    (arrow: any) => {
+      console.log("Recording arrow action:", arrow);
+      const action = createAction("konva", "ADD_ARROW", {
+        elementType: "arrow",
+        elementId: arrow.id,
+        data: { ...arrow, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
 
-      // Apply dash pattern based on stroke style
-      if (r.dash && r.dash.length > 0) {
-        ctx.setLineDash(r.dash);
-      } else {
-        ctx.setLineDash([]);
-      }
+  const handleKonvaDoubleArrowAdd = useCallback(
+    (doubleArrow: any) => {
+      console.log("Recording double arrow action:", doubleArrow);
+      const action = createAction("konva", "ADD_DOUBLE_ARROW", {
+        elementType: "double-arrow",
+        elementId: doubleArrow.id,
+        data: { ...doubleArrow, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
 
-      if (r.rotation) {
-        // For rectangles with rotation
-        const centerX = r.x + r.width / 2;
-        const centerY = r.y + r.height / 2;
+  const handleKonvaTextAdd = useCallback(
+    (text: any) => {
+      console.log("Recording text action:", text);
+      const action = createAction("konva", "ADD_TEXT", {
+        elementType: "text",
+        elementId: text.id,
+        data: { ...text, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
 
-        // Move to rectangle center, rotate, draw centered rectangle
-        ctx.translate(centerX, centerY);
-        ctx.rotate((r.rotation * Math.PI) / 180);
-        ctx.fillRect(-r.width / 2, -r.height / 2, r.width, r.height);
-        ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
-      } else {
-        // For rectangles without rotation - draw directly
-        ctx.fillRect(r.x, r.y, r.width, r.height);
+  const handleKonvaRectFlatten = useCallback(
+    (rects: any[]) => {
+      if (!drawingCanvasRef.current) return;
+      const ctx = drawingCanvasRef.current.getContext("2d");
+      if (!ctx) return;
+
+      // Record action for each rectangle before flattening
+      // rects.forEach((rect) => {
+      //   const action = createAction("konva", "ADD_RECTANGLE", {
+      //     elementType: "rectangle",
+      //     elementId: rect.id,
+      //     data: rect,
+      //   });
+      //   addAction(action);
+      // });
+
+      // rects.forEach((r: any) => {
+      //   ctx.save(); // Save current state
+
+      //   // Set stroke style
+      //   ctx.strokeStyle = r.stroke;
+      //   ctx.lineWidth = r.strokeWidth;
+      //   ctx.fillStyle = r.fill || "transparent";
+
+      //   // Apply dash pattern based on stroke style
+      //   if (r.dash && r.dash.length > 0) {
+      //     ctx.setLineDash(r.dash);
+      //   } else {
+      //     ctx.setLineDash([]);
+      //   }
+
+      //   if (r.rotation) {
+      //     // For rectangles with rotation
+      //     const centerX = r.x + r.width / 2;
+      //     const centerY = r.y + r.height / 2;
+
+      //     // Move to rectangle center, rotate, draw centered rectangle
+      //     ctx.translate(centerX, centerY);
+      //     ctx.rotate((r.rotation * Math.PI) / 180);
+      //     ctx.fillRect(-r.width / 2, -r.height / 2, r.width, r.height);
+      //     ctx.strokeRect(-r.width / 2, -r.height / 2, r.width, r.height);
+      //   } else {
+      //     // For rectangles without rotation - draw directly
+      //     ctx.fillRect(r.x, r.y, r.width, r.height);
+      //     ctx.strokeRect(r.x, r.y, r.width, r.height);
+      //   }
+
+      //   ctx.restore(); // Restore original state
+      // });
+
+      rects.forEach((r: any) => {
+        ctx.save();
+        ctx.strokeStyle = r.stroke;
+        ctx.lineWidth = r.strokeWidth;
+
+        if (r.dash && r.dash.length > 0) {
+          ctx.setLineDash(r.dash);
+        }
+
+        if (r.fill) {
+          ctx.fillStyle = r.fill;
+          ctx.fillRect(r.x, r.y, r.width, r.height);
+        }
+
         ctx.strokeRect(r.x, r.y, r.width, r.height);
-      }
+        ctx.restore();
+      });
 
-      ctx.restore(); // Restore original state
-    });
-
-    setRectangles([]);
-    saveHistory();
-  }, []);
+      setRectangles([]);
+      // saveHistory();
+    },
+    [setRectangles]
+  );
 
   const handleKonvaDoubleArrowFlatten = useCallback(
     (arrowShapes: any) => {
@@ -327,6 +472,16 @@ export default function ImageEditorModal({
 
       const scaleX = drawWidth / naturalWidth;
       const scaleY = drawHeight / naturalHeight;
+
+      // Record action for each double arrow before flattening
+      // arrowShapes.forEach((a: any) => {
+      //   const action = createAction("konva", "ADD_DOUBLE_ARROW", {
+      //     elementType: "double-arrow",
+      //     elementId: a.id,
+      //     data: a,
+      //   });
+      //   addAction(action);
+      // });
 
       arrowShapes.forEach((a: any) => {
         const [x1, y1, x2, y2] = a.points;
@@ -404,9 +559,16 @@ export default function ImageEditorModal({
         ctx.restore();
       });
       setDoubleArrows([]);
-      saveHistory();
+      // saveHistory();
     },
-    [imageDrawParams, setDoubleArrows, saveHistory, strokeStyle, brushSize]
+    [
+      imageDrawParams,
+      setDoubleArrows,
+      strokeStyle,
+      brushSize,
+      createAction,
+      addAction,
+    ]
   );
 
   const handleKonvaArrowFlatten = useCallback(
@@ -427,6 +589,16 @@ export default function ImageEditorModal({
       // Calculate scale factors
       const scaleX = drawWidth / naturalWidth;
       const scaleY = drawHeight / naturalHeight;
+
+      // Record action for each arrow before flattening
+      // arrows.forEach((a: KonvaArrow) => {
+      //   const action = createAction("konva", "ADD_ARROW", {
+      //     elementType: "arrow",
+      //     elementId: a.id,
+      //     data: a,
+      //   });
+      //   addAction(action);
+      // });
 
       arrowShapes.forEach((a: KonvaArrow) => {
         // Map points from canvas to image coordinates
@@ -489,9 +661,16 @@ export default function ImageEditorModal({
         ctx.restore();
       });
       setArrows([]);
-      saveHistory();
+      // saveHistory();
     },
-    [imageDrawParams, setArrows, saveHistory, strokeStyle, brushSize]
+    [
+      imageDrawParams,
+      setArrows,
+      strokeStyle,
+      brushSize,
+      createAction,
+      addAction,
+    ]
   );
 
   const handleKonvaCircleFlatten = useCallback(
@@ -499,6 +678,17 @@ export default function ImageEditorModal({
       if (!drawingCanvasRef.current) return;
       const ctx = drawingCanvasRef.current.getContext("2d");
       if (!ctx) return;
+
+      // Record action for each circle before flattening
+      // circleShapes.forEach((c) => {
+      //   const action = createAction("konva", "ADD_CIRCLE", {
+      //     elementType: "circle",
+      //     elementId: c.id,
+      //     data: c,
+      //   });
+      //   addAction(action);
+      // });
+
       circleShapes.forEach((c) => {
         ctx.save();
         ctx.strokeStyle = c.stroke;
@@ -521,9 +711,9 @@ export default function ImageEditorModal({
         ctx.restore();
       });
       setCircles([]);
-      saveHistory();
+      // saveHistory();
     },
-    []
+    [createAction, addAction, setCircles]
   );
 
   const handleTextFlatten = useCallback(
@@ -531,6 +721,16 @@ export default function ImageEditorModal({
       if (!drawingCanvasRef.current) return;
       const ctx = drawingCanvasRef.current.getContext("2d");
       if (!ctx) return;
+
+      // Record action for each text shape before flattening
+      // textShapes.forEach((t) => {
+      //   const action = createAction("konva", "ADD_TEXT", {
+      //     elementType: "text",
+      //     elementId: t.id,
+      //     data: t,
+      //   });
+      //   addAction(action);
+      // });
 
       textShapes.forEach((t) => {
         ctx.save();
@@ -600,9 +800,9 @@ export default function ImageEditorModal({
       });
 
       setTexts([]);
-      saveHistory();
+      // saveHistory();
     },
-    [saveHistory, drawingCanvasRef, setTexts]
+    [drawingCanvasRef, setTexts, addAction, createAction]
   );
 
   const getCurrentCanvasDimensions = useCallback(() => {
@@ -708,6 +908,15 @@ export default function ImageEditorModal({
       // Draw the image contained within the canvas
       baseCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
+      // Record the initial image load action
+      // const imageData = baseCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+      // const action = createAction("base", "LOAD_IMAGE", {
+      //   imageData,
+      //   canvasWidth,
+      //   canvasHeight,
+      // });
+      // addAction(action);
+
       drawingCtx.globalCompositeOperation = "source-over";
 
       setImageDrawParams({
@@ -719,12 +928,12 @@ export default function ImageEditorModal({
         naturalHeight: img.naturalHeight,
       });
 
-      saveHistory();
+      // saveHistory();
     };
     img.onerror = () => {
       console.error("Failed to load image for editing.");
     };
-  }, [image.url]);
+  }, [image.url, createAction, addAction]);
 
   useEffect(() => {
     if (!isOpen || !image.url) return;
@@ -732,8 +941,8 @@ export default function ImageEditorModal({
     const timeout = setTimeout(() => {
       if (baseCanvasRef.current && drawingCanvasRef.current) {
         drawImageOnCanvas();
-        setHistory([]);
-        setHistoryStep(-1);
+        // setHistory([]);
+        // setHistoryStep(-1);
       }
     }, 0); // Wait for canvas to mount
 
@@ -754,44 +963,44 @@ export default function ImageEditorModal({
     return () => window.removeEventListener("resize", handleResize);
   }, [isOpen, drawImageOnCanvas]);
 
-  function saveHistory() {
-    const drawingCanvas = drawingCanvasRef.current;
-    const ctx = drawingCanvas?.getContext("2d");
-    if (!drawingCanvas || !ctx) return;
-    const newHistory = history.slice(0, historyStep + 1);
-    newHistory.push(
-      ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height)
-    );
-    setHistory(newHistory);
-    setHistoryStep(newHistory.length - 1);
-  }
+  // function saveHistory() {
+  //   const drawingCanvas = drawingCanvasRef.current;
+  //   const ctx = drawingCanvas?.getContext("2d");
+  //   if (!drawingCanvas || !ctx) return;
+  //   const newHistory = history.slice(0, historyStep + 1);
+  //   newHistory.push(
+  //     ctx.getImageData(0, 0, drawingCanvas.width, drawingCanvas.height)
+  //   );
+  //   setHistory(newHistory);
+  //   setHistoryStep(newHistory.length - 1);
+  // }
 
-  const undo = useCallback(() => {
-    if (historyStep > 0) {
-      const newStep = historyStep - 1;
-      setHistoryStep(newStep);
-      const canvas = drawingCanvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (canvas && ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (newStep >= 0) {
-          ctx.putImageData(history[newStep], 0, 0);
-        }
-      }
-    }
-  }, [historyStep, history]);
+  // const undo = useCallback(() => {
+  //   if (historyStep > 0) {
+  //     const newStep = historyStep - 1;
+  //     setHistoryStep(newStep);
+  //     const canvas = drawingCanvasRef.current;
+  //     const ctx = canvas?.getContext("2d");
+  //     if (canvas && ctx) {
+  //       ctx.clearRect(0, 0, canvas.width, canvas.height);
+  //       if (newStep >= 0) {
+  //         ctx.putImageData(history[newStep], 0, 0);
+  //       }
+  //     }
+  //   }
+  // }, [historyStep, history]);
 
-  const redo = useCallback(() => {
-    if (historyStep < history.length - 1) {
-      const newStep = historyStep + 1;
-      setHistoryStep(newStep);
-      const canvas = drawingCanvasRef.current;
-      const ctx = canvas?.getContext("2d");
-      if (canvas && ctx) {
-        ctx.putImageData(history[newStep], 0, 0);
-      }
-    }
-  }, [historyStep, history]);
+  // const redo = useCallback(() => {
+  //   if (historyStep < history.length - 1) {
+  //     const newStep = historyStep + 1;
+  //     setHistoryStep(newStep);
+  //     const canvas = drawingCanvasRef.current;
+  //     const ctx = canvas?.getContext("2d");
+  //     if (canvas && ctx) {
+  //       ctx.putImageData(history[newStep], 0, 0);
+  //     }
+  //   }
+  // }, [historyStep, history]);
 
   // Add download function
   const downloadImage = () => {
@@ -824,7 +1033,7 @@ export default function ImageEditorModal({
     if (!baseCanvas || !ctx) return;
 
     // save current state before applying filter
-    saveHistory();
+    // saveHistory();
 
     // Get image data
     const imageData = ctx.getImageData(
@@ -834,6 +1043,11 @@ export default function ImageEditorModal({
       baseCanvas.height
     );
     const data = imageData.data;
+
+    const action = createAction("base", "APPLY_FILTER", {
+      filterType: "black-and-white",
+    });
+    addAction(action);
 
     // Convert to grayscale
     for (let i = 0; i < data.length; i += 4) {
@@ -851,7 +1065,7 @@ export default function ImageEditorModal({
 
     // Put the modified image data back
     ctx.putImageData(imageData, 0, 0);
-    saveHistory();
+    // saveHistory();
   };
 
   const hasDrawingCanvasContent = useCallback(() => {
@@ -869,6 +1083,72 @@ export default function ImageEditorModal({
       return index % 4 === 3 && pixel !== 0; // Check alpha channel
     });
   }, []);
+
+  const drawCropOverlay = useCallback(() => {
+    const canvas = drawingCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx || !cropArea) return;
+
+    // Always start with a clean canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set composite operation to work with transparent background
+    ctx.globalCompositeOperation = "source-over";
+
+    // Draw semi-transparent overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Clear the crop area
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fillRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+
+    // Reset composite operation for drawing borders
+    ctx.globalCompositeOperation = "source-over";
+
+    // Draw crop area border with a thicker, more visible style
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
+
+    // Draw a second border to make it more visible
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.strokeRect(
+      cropArea.x - 1,
+      cropArea.y - 1,
+      cropArea.width + 2,
+      cropArea.height + 2
+    );
+    ctx.setLineDash([]);
+
+    // Draw corner handles
+    const handleSize = 8;
+    // Draw white squares with black borders for better visibility
+    [
+      [cropArea.x - handleSize / 2, cropArea.y - handleSize / 2],
+      [
+        cropArea.x + cropArea.width - handleSize / 2,
+        cropArea.y - handleSize / 2,
+      ],
+      [
+        cropArea.x - handleSize / 2,
+        cropArea.y + cropArea.height - handleSize / 2,
+      ],
+      [
+        cropArea.x + cropArea.width - handleSize / 2,
+        cropArea.y + cropArea.height - handleSize / 2,
+      ],
+    ].forEach(([x, y]) => {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, y, handleSize, handleSize);
+      ctx.strokeStyle = "#000000";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, handleSize, handleSize);
+    });
+  }, [cropArea]);
 
   const hasUnsavedChanges =
     hasDrawingCanvasContent() ||
@@ -915,29 +1195,30 @@ export default function ImageEditorModal({
       setBrushSize(3);
     }
 
-    // If leaving rectangle tool, flatten rectangles before switching
-    if (activeTool === "rectangle" && konvaRectRef.current) {
-      konvaRectRef.current.flatten();
-    }
+    // // If leaving rectangle tool, flatten rectangles before switching
+    // if (activeTool === "rectangle" && konvaRectRef.current) {
+    //   konvaRectRef.current.flatten();
+    // }
 
-    // If leaving circle tool, flatten circles before switching
-    if (activeTool === "circle" && konvaCircleRef.current) {
-      konvaCircleRef.current.flatten();
-    }
+    // // If leaving circle tool, flatten circles before switching
+    // if (activeTool === "circle" && konvaCircleRef.current) {
+    //   konvaCircleRef.current.flatten();
+    // }
 
-    // If leaving arrow tool, flatten arrows before switching
-    if (activeTool === "arrow" && konvaArrowRef.current) {
-      konvaArrowRef.current.flatten();
-    }
+    // // If leaving arrow tool, flatten arrows before switching
+    // if (activeTool === "arrow" && konvaArrowRef.current) {
+    //   konvaArrowRef.current.flatten();
+    // }
 
-    // If leaving double-arrow tool, flatten double arrows before switching
-    if (activeTool === "double-arrow" && konvaDoubleArrowRef.current) {
-      konvaDoubleArrowRef.current.flatten();
-    }
+    // // If leaving double-arrow tool, flatten double arrows before switching
+    // if (activeTool === "double-arrow" && konvaDoubleArrowRef.current) {
+    //   konvaDoubleArrowRef.current.flatten();
+    // }
 
-    if (activeTool === "text" && textEditorRef.current) {
-      textEditorRef.current.flatten();
-    }
+    // if (activeTool === "text" && textEditorRef.current) {
+    //   textEditorRef.current.flatten();
+    // }
+
     // Clean up crop tool state
     if (tool === "crop") {
       setCropArea(null);
@@ -1145,6 +1426,7 @@ export default function ImageEditorModal({
 
     setIsDrawing(true);
     setStartPoint(pos);
+    setCurrentStroke([pos]);
 
     if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
       ctx.beginPath();
@@ -1169,8 +1451,9 @@ export default function ImageEditorModal({
 
     const drawingCanvas = drawingCanvasRef.current;
     const ctx = drawingCanvas?.getContext("2d");
-
     if (!drawingCanvas || !ctx) return;
+
+    setCurrentStroke((prev) => [...prev, currentPos]);
 
     if (activeTool === "crop" && dragStart && isDrawing) {
       // Constrain to canvas boundaries
@@ -1194,6 +1477,13 @@ export default function ImageEditorModal({
 
     // Handle other tools
     if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
+      if (activeTool === "eraser") {
+        ctx.globalCompositeOperation = "destination-out";
+      } else {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.strokeStyle = currentColor;
+      }
+
       ctx.lineTo(currentPos.x, currentPos.y);
       ctx.lineWidth = brushSize;
       ctx.lineCap = "round";
@@ -1201,12 +1491,18 @@ export default function ImageEditorModal({
       ctx.stroke();
     } else {
       // Shape drawing - restore last state and draw new shape
-      const lastHistoryState = history[historyStep];
-      if (lastHistoryState) {
-        ctx.putImageData(lastHistoryState, 0, 0);
-      } else {
-        ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-      }
+      // const lastHistoryState = history[historyStep];
+      // if (lastHistoryState) {
+      //   ctx.putImageData(lastHistoryState, 0, 0);
+      // } else {
+      //   ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+      // }
+
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+
+      // drawShape(ctx, "line", startPoint!, currentPos);
 
       if (activeTool === "rectangle") {
         drawShape(ctx, "rectangle", startPoint!, currentPos);
@@ -1227,6 +1523,8 @@ export default function ImageEditorModal({
         );
         ctx.setLineDash([]);
       }
+
+      ctx.restore();
     }
   };
 
@@ -1259,12 +1557,58 @@ export default function ImageEditorModal({
       if (activeTool && ["pencil", "eraser"].includes(activeTool)) {
         ctx.closePath();
         ctx.globalCompositeOperation = "source-over";
-      }
-    }
 
-    setIsDrawing(false);
-    setStartPoint(null);
-    saveHistory();
+        // Record the drawing action using the new history system
+        if (currentStroke.length > 0) {
+          const action = createAction(
+            "drawing",
+            activeTool === "pencil" ? "DRAW_PENCIL" : "DRAW_ERASER",
+            {
+              points: currentStroke,
+              color: currentColor,
+              strokeWidth: brushSize,
+              strokeStyle,
+              isEraser: activeTool === "eraser",
+            }
+          );
+          addAction(action);
+        }
+      } else if (activeTool && startPoint) {
+        // Record shape actions
+        const endPoint = currentStroke[currentStroke.length - 1] || startPoint;
+        let actionType = "DRAW_LINE";
+
+        // switch (activeTool) {
+        //   case "line":
+        //     actionType = "DRAW_LINE";
+        //     break;
+        //   case "curve":
+        //     actionType = "DRAW_CURVE";
+        //     break;
+        //   case "curve-arrow":
+        //     actionType = "DRAW_DOUBLE_CURVE";
+        //     break;
+        // }
+
+        if (actionType) {
+          const action = createAction("drawing", actionType, {
+            points: [startPoint, endPoint],
+            color: currentColor,
+            strokeWidth: brushSize,
+            strokeStyle,
+            startPoint,
+            endPoint,
+            shape: activeTool,
+          });
+          addAction(action);
+        }
+      }
+
+      setIsDrawing(false);
+      setStartPoint(null);
+      setCurrentStroke([]);
+      // saveHistory();
+    }
   };
 
   const handleSave = () => {
@@ -1288,6 +1632,7 @@ export default function ImageEditorModal({
     if (textEditorRef.current) {
       textEditorRef.current.flatten();
     }
+
     const baseCanvas = baseCanvasRef.current;
     const drawingCanvas = drawingCanvasRef.current;
     if (!baseCanvas || !drawingCanvas) return;
@@ -1308,72 +1653,6 @@ export default function ImageEditorModal({
     onSave(dataUrl);
   };
 
-  const drawCropOverlay = useCallback(() => {
-    const canvas = drawingCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx || !cropArea) return;
-
-    // Always start with a clean canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Set composite operation to work with transparent background
-    ctx.globalCompositeOperation = "source-over";
-
-    // Draw semi-transparent overlay
-    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Clear the crop area
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
-
-    // Reset composite operation for drawing borders
-    ctx.globalCompositeOperation = "source-over";
-
-    // Draw crop area border with a thicker, more visible style
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(cropArea.x, cropArea.y, cropArea.width, cropArea.height);
-
-    // Draw a second border to make it more visible
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(
-      cropArea.x - 1,
-      cropArea.y - 1,
-      cropArea.width + 2,
-      cropArea.height + 2
-    );
-    ctx.setLineDash([]);
-
-    // Draw corner handles
-    const handleSize = 8;
-    // Draw white squares with black borders for better visibility
-    [
-      [cropArea.x - handleSize / 2, cropArea.y - handleSize / 2],
-      [
-        cropArea.x + cropArea.width - handleSize / 2,
-        cropArea.y - handleSize / 2,
-      ],
-      [
-        cropArea.x - handleSize / 2,
-        cropArea.y + cropArea.height - handleSize / 2,
-      ],
-      [
-        cropArea.x + cropArea.width - handleSize / 2,
-        cropArea.y + cropArea.height - handleSize / 2,
-      ],
-    ].forEach(([x, y]) => {
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(x, y, handleSize, handleSize);
-      ctx.strokeStyle = "#000000";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x, y, handleSize, handleSize);
-    });
-  }, [cropArea]);
-
   const applyCrop = useCallback(() => {
     if (!cropArea || !baseCanvasRef.current) return;
 
@@ -1381,6 +1660,12 @@ export default function ImageEditorModal({
     const drawingCanvas = drawingCanvasRef.current;
     const baseCtx = baseCanvas.getContext("2d");
     const drawingCtx = drawingCanvas?.getContext("2d");
+    const imageData = baseCtx?.getImageData(
+      0,
+      0,
+      baseCanvas.width,
+      baseCanvas.height
+    );
     if (!baseCtx || !drawingCtx || !drawingCanvas) return;
 
     // Ensure crop dimensions are positive and within canvas bounds
@@ -1390,6 +1675,15 @@ export default function ImageEditorModal({
       width: Math.min(cropArea.width, baseCanvas.width - cropArea.x),
       height: Math.min(cropArea.height, baseCanvas.height - cropArea.y),
     };
+
+    // save current state before cropping
+    if (imageData) {
+      const action = createAction("base", "CROP_IMAGE", {
+        cropArea: validCropArea,
+        imageData,
+      });
+      addAction(action);
+    }
 
     // Create temporary canvases for both base and drawing layers
     const tempBaseCanvas = document.createElement("canvas");
@@ -1478,8 +1772,8 @@ export default function ImageEditorModal({
     setActiveTool(null);
 
     // Save to history
-    saveHistory();
-  }, [cropArea]);
+    // saveHistory();
+  }, [cropArea, addAction, createAction]);
 
   const flattenLayers = useCallback(() => {
     const baseCanvas = baseCanvasRef.current;
@@ -1510,8 +1804,8 @@ export default function ImageEditorModal({
     drawingCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
     // Reset history since we're starting fresh
-    setHistory([]);
-    setHistoryStep(-1);
+    // setHistory([]);
+    // setHistoryStep(-1);
   }, []);
 
   if (!isOpen) return null;
@@ -1539,8 +1833,8 @@ export default function ImageEditorModal({
               <Button
                 variant="outline"
                 onClick={undo}
-                disabled={historyStep <= 0}
-                title="Undo"
+                disabled={!canUndo}
+                title={`Undo (${actionCount} actions)`}
                 className="flex items-center gap-2 p-3"
               >
                 <Undo2 className="h-4 w-4" />
@@ -1549,7 +1843,7 @@ export default function ImageEditorModal({
               <Button
                 variant="outline"
                 onClick={redo}
-                disabled={historyStep >= history.length - 1}
+                disabled={!canRedo}
                 title="Redo"
                 className="flex items-center gap-2 p-3"
               >
@@ -2023,30 +2317,274 @@ export default function ImageEditorModal({
                       : "crosshair",
                 }}
               />
-              {mounted && activeTool === "rectangle" && (
-                <KonvaRectangle
-                  ref={konvaRectRef}
-                  width={getCurrentCanvasDimensions().width}
-                  height={getCurrentCanvasDimensions().height}
-                  active={activeTool === "rectangle"}
-                  color={currentColor}
-                  brushSize={brushSize}
-                  strokeStyle={strokeStyle}
-                  backgroundColor={backgroundColor}
-                  rectangles={rectangles}
-                  setRectangles={setRectangles}
-                  onFlatten={handleKonvaRectFlatten}
-                  onElementSelect={(id, type) => {
-                    setSelectedElementId(id);
-                    setSelectedElementType(type);
-                  }}
-                  onElementDeselect={() => {
-                    setSelectedElementId(null);
-                    setSelectedElementType(null);
-                  }}
-                  checkTrashZoneCollision={checkTrashZoneCollision}
-                  updateTrashZoneState={updateTrashZoneState}
-                />
+              {mounted && (
+                <>
+                  {activeTool === "rectangle" && (
+                    <KonvaRectangle
+                      ref={konvaRectRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={activeTool === "rectangle"}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      backgroundColor={backgroundColor}
+                      onAdd={handleKonvaRectAdd}
+                      rectangles={rectangles}
+                      setRectangles={setRectangles}
+                      onFlatten={handleKonvaRectFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool === "circle" && (
+                    <KonvaCircle
+                      ref={konvaCircleRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={activeTool === "circle"}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      circles={circles}
+                      backgroundColor={backgroundColor}
+                      onAdd={handleKonvaCircleAdd}
+                      setCircles={setCircles} // Use history-aware setter
+                      onFlatten={handleKonvaCircleFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool === "arrow" && (
+                    <ArrowKonva
+                      ref={konvaArrowRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={activeTool === "arrow"}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      onAdd={handleKonvaArrowAdd}
+                      arrows={arrows}
+                      setArrows={setArrows} // Use history-aware setter
+                      onFlatten={handleKonvaArrowFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool === "double-arrow" && (
+                    <KonvaDoubleArrow
+                      ref={konvaDoubleArrowRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={activeTool === "double-arrow"}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      arrows={doubleArrows}
+                      onAdd={handleKonvaDoubleArrowAdd}
+                      setArrows={setDoubleArrows} // Use history-aware setter
+                      onFlatten={handleKonvaDoubleArrowFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool === "text" && (
+                    <TextEditor
+                      ref={textEditorRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={activeTool === "text"}
+                      color={currentColor}
+                      backgroundColor={backgroundColor}
+                      fontSize={fontSize}
+                      fontFamily={fontFamily}
+                      onAdd={handleKonvaTextAdd}
+                      texts={texts}
+                      setTexts={setTexts}
+                      onFlatten={handleTextFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool !== "rectangle" && rectangles.length > 0 && (
+                    <KonvaRectangle
+                      ref={konvaRectRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={false}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      backgroundColor={backgroundColor}
+                      onAdd={handleKonvaRectAdd}
+                      rectangles={rectangles}
+                      setRectangles={setRectangles}
+                      onFlatten={handleKonvaRectFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool !== "circle" && circles.length > 0 && (
+                    <KonvaCircle
+                      ref={konvaCircleRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={false}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      circles={circles}
+                      backgroundColor={backgroundColor}
+                      onAdd={handleKonvaCircleAdd}
+                      setCircles={setCircles} // Use history-aware setter
+                      onFlatten={handleKonvaCircleFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool !== "arrow" && arrows.length > 0 && (
+                    <ArrowKonva
+                      ref={konvaArrowRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={false}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      onAdd={handleKonvaArrowAdd}
+                      arrows={arrows}
+                      setArrows={setArrows} // Use history-aware setter
+                      onFlatten={handleKonvaArrowFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool !== "double-arrow" && doubleArrows.length > 0 && (
+                    <KonvaDoubleArrow
+                      ref={konvaDoubleArrowRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={false}
+                      color={currentColor}
+                      brushSize={brushSize}
+                      strokeStyle={strokeStyle}
+                      arrows={doubleArrows}
+                      onAdd={handleKonvaDoubleArrowAdd}
+                      setArrows={setDoubleArrows} // Use history-aware setter
+                      onFlatten={handleKonvaDoubleArrowFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+
+                  {activeTool !== "text" && texts.length > 0 && (
+                    <TextEditor
+                      ref={textEditorRef}
+                      width={getCurrentCanvasDimensions().width}
+                      height={getCurrentCanvasDimensions().height}
+                      active={false}
+                      color={currentColor}
+                      backgroundColor={backgroundColor}
+                      fontSize={fontSize}
+                      fontFamily={fontFamily}
+                      onAdd={handleKonvaTextAdd}
+                      texts={texts}
+                      setTexts={setTexts}
+                      onFlatten={handleTextFlatten}
+                      onElementSelect={(id, type) => {
+                        setSelectedElementId(id);
+                        setSelectedElementType(type);
+                      }}
+                      onElementDeselect={() => {
+                        setSelectedElementId(null);
+                        setSelectedElementType(null);
+                      }}
+                      checkTrashZoneCollision={checkTrashZoneCollision}
+                      updateTrashZoneState={updateTrashZoneState}
+                    />
+                  )}
+                </>
               )}
 
               {activeTool === "curve" && (
@@ -2068,108 +2606,6 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
-                />
-              )}
-
-              {mounted && activeTool === "circle" && (
-                <KonvaCircle
-                  ref={konvaCircleRef}
-                  width={getCurrentCanvasDimensions().width}
-                  height={getCurrentCanvasDimensions().height}
-                  active={activeTool === "circle"}
-                  color={currentColor}
-                  brushSize={brushSize}
-                  strokeStyle={strokeStyle}
-                  circles={circles}
-                  backgroundColor={backgroundColor}
-                  setCircles={setCircles} // Use history-aware setter
-                  onFlatten={handleKonvaCircleFlatten}
-                  onElementSelect={(id, type) => {
-                    setSelectedElementId(id);
-                    setSelectedElementType(type);
-                  }}
-                  onElementDeselect={() => {
-                    setSelectedElementId(null);
-                    setSelectedElementType(null);
-                  }}
-                  checkTrashZoneCollision={checkTrashZoneCollision}
-                  updateTrashZoneState={updateTrashZoneState}
-                />
-              )}
-
-              {mounted && activeTool === "arrow" && (
-                <ArrowKonva
-                  ref={konvaArrowRef}
-                  width={getCurrentCanvasDimensions().width}
-                  height={getCurrentCanvasDimensions().height}
-                  active={activeTool === "arrow"}
-                  color={currentColor}
-                  brushSize={brushSize}
-                  strokeStyle={strokeStyle}
-                  arrows={arrows}
-                  setArrows={setArrows} // Use history-aware setter
-                  onFlatten={handleKonvaArrowFlatten}
-                  onElementSelect={(id, type) => {
-                    setSelectedElementId(id);
-                    setSelectedElementType(type);
-                  }}
-                  onElementDeselect={() => {
-                    setSelectedElementId(null);
-                    setSelectedElementType(null);
-                  }}
-                  checkTrashZoneCollision={checkTrashZoneCollision}
-                  updateTrashZoneState={updateTrashZoneState}
-                />
-              )}
-
-              {mounted && activeTool === "double-arrow" && (
-                <KonvaDoubleArrow
-                  ref={konvaDoubleArrowRef}
-                  width={getCurrentCanvasDimensions().width}
-                  height={getCurrentCanvasDimensions().height}
-                  active={activeTool === "double-arrow"}
-                  color={currentColor}
-                  brushSize={brushSize}
-                  strokeStyle={strokeStyle}
-                  arrows={doubleArrows}
-                  setArrows={setDoubleArrows} // Use history-aware setter
-                  onFlatten={handleKonvaDoubleArrowFlatten}
-                  onElementSelect={(id, type) => {
-                    setSelectedElementId(id);
-                    setSelectedElementType(type);
-                  }}
-                  onElementDeselect={() => {
-                    setSelectedElementId(null);
-                    setSelectedElementType(null);
-                  }}
-                  checkTrashZoneCollision={checkTrashZoneCollision}
-                  updateTrashZoneState={updateTrashZoneState}
-                />
-              )}
-
-              {mounted && activeTool === "text" && (
-                <TextEditor
-                  ref={textEditorRef}
-                  width={getCurrentCanvasDimensions().width}
-                  height={getCurrentCanvasDimensions().height}
-                  active={activeTool === "text"}
-                  color={currentColor}
-                  backgroundColor={backgroundColor}
-                  fontSize={fontSize}
-                  fontFamily={fontFamily}
-                  texts={texts}
-                  setTexts={setTexts}
-                  onFlatten={handleTextFlatten}
-                  onElementSelect={(id, type) => {
-                    setSelectedElementId(id);
-                    setSelectedElementType(type);
-                  }}
-                  onElementDeselect={() => {
-                    setSelectedElementId(null);
-                    setSelectedElementType(null);
-                  }}
-                  checkTrashZoneCollision={checkTrashZoneCollision}
-                  updateTrashZoneState={updateTrashZoneState}
                 />
               )}
 
@@ -2232,7 +2668,7 @@ export default function ImageEditorModal({
           <div className="lg:hidden">
             <MobileView
               undo={undo}
-              historyStep={historyStep}
+              historyStep={historyState.currentStep}
               redo={redo}
               setActiveTool={setActiveTool}
               activeTool={activeTool}
