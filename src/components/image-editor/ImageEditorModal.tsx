@@ -1,10 +1,9 @@
 "use client";
 
 import type { IssueImage } from "@/types";
-import type { KonvaArrowHandle, KonvaArrow } from "./ArrowKonva";
-import type { KonvaCircleHandle, KonvaCircleShape } from "./KonvaCircle";
-import type { TextEditorHandle, KonvaTextShape } from "./TextEditor";
-import type { KonvaRectangleHandle } from "./KonvaRectangle";
+import type { KonvaArrow } from "./ArrowKonva";
+import type { KonvaCircleShape } from "./KonvaCircle";
+import type { KonvaTextShape } from "./TextEditor";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
@@ -31,10 +30,6 @@ const KonvaDoubleArrow = dynamic(() => import("./KonvaDoubleArrow"), {
   ssr: false,
   loading: () => <div>Loading Circle Tool...</div>,
 });
-import type {
-  KonvaDoubleArrowHandle,
-  KonvaDoubleArrowShape,
-} from "./KonvaDoubleArrow";
 
 import {
   Dialog,
@@ -42,7 +37,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -145,9 +139,6 @@ export default function ImageEditorModal({
   const { toast } = useToast();
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
 
-  // State for history management
-  // const [history, setHistory] = useState<ImageData[]>([]);
-  // const [historyStep, setHistoryStep] = useState<number>(-1);
   const {
     historyState,
     canUndo,
@@ -157,11 +148,9 @@ export default function ImageEditorModal({
     actionCount,
     addAction,
     createAction,
-    clearHistory,
 
     replayManager,
 
-    // get konva states from history manager
     rectangles,
     setRectangles,
     circles,
@@ -184,12 +173,6 @@ export default function ImageEditorModal({
     baseCanvasRef,
   });
 
-  // Konva Rectangle state and ref
-  // const [rectangles, setRectangles] = useState<any[]>([]);
-  // const konvaRectRef = useRef<KonvaRectangleHandle>(null);
-
-  // const [texts, setTexts] = useState<KonvaTextShape[]>([]);
-  // const textEditorRef = useRef<TextEditorHandle>(null);
   const [fontFamily, setFontFamily] = useState<FontFamily>("sans-serif");
 
   // Crop-related state
@@ -202,18 +185,6 @@ export default function ImageEditorModal({
   const [currentColor, setCurrentColor] = useState<string>("#000000");
   const [brushSize, setBrushSize] = useState<number>(3);
   const [strokeStyle, setStrokeStyle] = useState<StrokeStyle>("solid");
-
-  // Add state and ref for arrows
-  // const [arrows, setArrows] = useState<KonvaArrow[]>([]);
-  // const konvaArrowRef = useRef<KonvaArrowHandle>(null);
-
-  // circles
-  // const [circles, setCircles] = useState<KonvaCircleShape[]>([]);
-  // const konvaCircleRef = useRef<KonvaCircleHandle>(null);
-
-  // Add state and ref for double arrows
-  // const [doubleArrows, setDoubleArrows] = useState<KonvaDoubleArrowShape[]>([]);
-  // const konvaDoubleArrowRef = useRef<KonvaDoubleArrowHandle>(null);
 
   // Mobile view state for delete
   const [selectedElementId, setSelectedElementId] = useState<string | null>(
