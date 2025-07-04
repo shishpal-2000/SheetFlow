@@ -77,6 +77,7 @@ import MobileView from "./MobileView";
 import { TbArrowCurveRight } from "react-icons/tb";
 import { useHistoryManager } from "@/hooks/useHistoryManager";
 import { DrawingAction } from "@/types/history";
+import { set } from "date-fns";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -1334,102 +1335,102 @@ export default function ImageEditorModal({
     };
   };
 
-  const drawArrow = (
-    ctx: CanvasRenderingContext2D,
-    fromX: number,
-    fromY: number,
-    toX: number,
-    toY: number,
-    isDouble: boolean
-  ) => {
-    const headlen = brushSize * 5; // length of arrow head relative to brush size
-    const angle = Math.atan2(toY - fromY, toX - fromX);
+  // const drawArrow = (
+  //   ctx: CanvasRenderingContext2D,
+  //   fromX: number,
+  //   fromY: number,
+  //   toX: number,
+  //   toY: number,
+  //   isDouble: boolean
+  // ) => {
+  //   const headlen = brushSize * 5; // length of arrow head relative to brush size
+  //   const angle = Math.atan2(toY - fromY, toX - fromX);
 
-    // Draw the main line
-    ctx.beginPath();
-    ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
-    ctx.strokeStyle = currentColor;
-    ctx.lineWidth = brushSize;
-    ctx.stroke();
+  //   // Draw the main line
+  //   ctx.beginPath();
+  //   ctx.moveTo(fromX, fromY);
+  //   ctx.lineTo(toX, toY);
+  //   ctx.strokeStyle = currentColor;
+  //   ctx.lineWidth = brushSize;
+  //   ctx.stroke();
 
-    // Draw the arrow head at the end
-    ctx.beginPath();
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(
-      toX - headlen * Math.cos(angle - Math.PI / 6),
-      toY - headlen * Math.sin(angle - Math.PI / 6)
-    );
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(
-      toX - headlen * Math.cos(angle + Math.PI / 6),
-      toY - headlen * Math.sin(angle + Math.PI / 6)
-    );
-    ctx.stroke();
+  //   // Draw the arrow head at the end
+  //   ctx.beginPath();
+  //   ctx.moveTo(toX, toY);
+  //   ctx.lineTo(
+  //     toX - headlen * Math.cos(angle - Math.PI / 6),
+  //     toY - headlen * Math.sin(angle - Math.PI / 6)
+  //   );
+  //   ctx.moveTo(toX, toY);
+  //   ctx.lineTo(
+  //     toX - headlen * Math.cos(angle + Math.PI / 6),
+  //     toY - headlen * Math.sin(angle + Math.PI / 6)
+  //   );
+  //   ctx.stroke();
 
-    // Draw the arrow head at the start if double-headed
-    if (isDouble) {
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(
-        fromX + headlen * Math.cos(angle - Math.PI / 6),
-        fromY + headlen * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(
-        fromX + headlen * Math.cos(angle + Math.PI / 6),
-        fromY + headlen * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.stroke();
-    }
-  };
+  //   // Draw the arrow head at the start if double-headed
+  //   if (isDouble) {
+  //     ctx.beginPath();
+  //     ctx.moveTo(fromX, fromY);
+  //     ctx.lineTo(
+  //       fromX + headlen * Math.cos(angle - Math.PI / 6),
+  //       fromY + headlen * Math.sin(angle - Math.PI / 6)
+  //     );
+  //     ctx.moveTo(fromX, fromY);
+  //     ctx.lineTo(
+  //       fromX + headlen * Math.cos(angle + Math.PI / 6),
+  //       fromY + headlen * Math.sin(angle + Math.PI / 6)
+  //     );
+  //     ctx.stroke();
+  //   }
+  // };
 
-  const configureStrokeStyle = (ctx: CanvasRenderingContext2D) => {
-    switch (strokeStyle) {
-      case "solid":
-        ctx.setLineDash([]);
-        ctx.lineWidth = brushSize;
-        break;
-      case "dashed":
-        ctx.setLineDash([brushSize * 3, brushSize * 2]);
-        ctx.lineWidth = brushSize;
-        break;
-      case "dotted":
-        ctx.setLineDash([brushSize, brushSize]);
-        ctx.lineWidth = brushSize;
-        break;
-    }
-  };
+  // const configureStrokeStyle = (ctx: CanvasRenderingContext2D) => {
+  //   switch (strokeStyle) {
+  //     case "solid":
+  //       ctx.setLineDash([]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //     case "dashed":
+  //       ctx.setLineDash([brushSize * 3, brushSize * 2]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //     case "dotted":
+  //       ctx.setLineDash([brushSize, brushSize]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //   }
+  // };
 
-  const drawShape = (
-    ctx: CanvasRenderingContext2D,
-    shape: "line" | "rectangle" | "circle",
-    start: { x: number; y: number },
-    end: { x: number; y: number }
-  ) => {
-    ctx.beginPath();
-    ctx.strokeStyle = currentColor;
-    configureStrokeStyle(ctx);
+  // const drawShape = (
+  //   ctx: CanvasRenderingContext2D,
+  //   shape: "line" | "rectangle" | "circle",
+  //   start: { x: number; y: number },
+  //   end: { x: number; y: number }
+  // ) => {
+  //   ctx.beginPath();
+  //   ctx.strokeStyle = currentColor;
+  //   configureStrokeStyle(ctx);
 
-    if (shape === "line") {
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
-    } else if (shape === "rectangle") {
-      ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
-    } else if (shape === "circle") {
-      const radius = Math.sqrt(
-        Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
-      );
+  //   if (shape === "line") {
+  //     ctx.moveTo(start.x, start.y);
+  //     ctx.lineTo(end.x, end.y);
+  //     ctx.stroke();
+  //   } else if (shape === "rectangle") {
+  //     ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
+  //   } else if (shape === "circle") {
+  //     const radius = Math.sqrt(
+  //       Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+  //     );
 
-      ctx.beginPath();
-      ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+  //     ctx.beginPath();
+  //     ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
+  //     ctx.stroke();
+  //   }
 
-    // Reset line dash to default
-    ctx.setLineDash([]);
-  };
+  //   // Reset line dash to default
+  //   ctx.setLineDash([]);
+  // };
 
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -1541,21 +1542,17 @@ export default function ImageEditorModal({
       ctx.stroke();
     }
 
-    if (
-      activeTool &&
-      ["line"].includes(activeTool) &&
-      startPoint
-    ) {
+    if (activeTool && ["line"].includes(activeTool) && startPoint) {
       // Clear and redraw with preview
       ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
       // Replay all existing drawing actions first
-      if (replayManager) {
+      if (replayManager?.current) {
         const existingActions = historyState.actions.filter(
           (action) => action.target === "drawing"
         ) as DrawingAction[];
         existingActions.forEach((action) => {
-          replayManager!.applyDrawingAction(action);
+          replayManager.current!.applyDrawingAction(action);
         });
       }
 
@@ -1639,6 +1636,9 @@ export default function ImageEditorModal({
             }
           );
           addAction(action);
+
+          // Clear the canvas after adding action - let history replay handle rendering
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
       } else if (activeTool && startPoint) {
         // Handle other tools (line, etc.)
@@ -1655,6 +1655,9 @@ export default function ImageEditorModal({
             isEraser: false,
           });
           addAction(action);
+
+          // Clear the canvas after adding action - let history replay handle rendering
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
       }
 
@@ -2006,13 +2009,14 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges && activeTool !== "curve") {
-                    setShowCurveConfirm(true);
-                    setShowCropConfirm(false);
-                    setShowCurveArrowConfirm(false);
-                  } else {
-                    setActiveTool("curve");
-                  }
+                  // if (hasChanges && activeTool !== "curve") {
+                  //   setShowCurveConfirm(true);
+                  //   setShowCropConfirm(false);
+                  //   setShowCurveArrowConfirm(false);
+                  // } else {
+                  //   setActiveTool("curve");
+                  // }
+                  setActiveTool("curve");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
@@ -2035,13 +2039,14 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges && activeTool !== "curve-arrow") {
-                    setShowCurveArrowConfirm(true);
-                    setShowCropConfirm(false);
-                    setShowCurveConfirm(false);
-                  } else {
-                    setActiveTool("curve-arrow");
-                  }
+                  // if (hasChanges && activeTool !== "curve-arrow") {
+                  //   setShowCurveArrowConfirm(true);
+                  //   setShowCropConfirm(false);
+                  //   setShowCurveConfirm(false);
+                  // } else {
+                  //   setActiveTool("curve-arrow");
+                  // }
+                  setActiveTool("curve-arrow");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
@@ -2051,7 +2056,7 @@ export default function ImageEditorModal({
             </div>
 
             {/* Confirmation dialog for crop */}
-            {showCropConfirm && (
+            {/* {showCropConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2086,10 +2091,10 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Confirmation dialog for curve */}
-            {showCurveConfirm && (
+            {/* {showCurveConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2124,9 +2129,9 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
-            {showCurveArrowConfirm && (
+            {/* {showCurveArrowConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2161,7 +2166,7 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Tool-specific controls */}
             {activeTool === "crop" && (
@@ -2661,6 +2666,8 @@ export default function ImageEditorModal({
                   brushSize={brushSize}
                   createAction={createAction}
                   addAction={addAction}
+                  replayManager={replayManager}
+                  historyState={historyState}
                 />
               )}
 
@@ -2674,6 +2681,8 @@ export default function ImageEditorModal({
                   brushSize={brushSize}
                   createAction={createAction}
                   addAction={addAction}
+                  replayManager={replayManager}
+                  historyState={historyState}
                 />
               )}
 

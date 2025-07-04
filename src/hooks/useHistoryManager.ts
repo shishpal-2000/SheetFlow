@@ -95,118 +95,140 @@ export const useHistoryManager = ({
   );
 
   // Add action to history
-  const addAction = useCallback((action: HistoryAction) => {
-    setHistoryState((prevState) => {
-      // Remove any actions after current step (when undoing and then doing new action)
-      const newActions = prevState.actions.slice(0, prevState.currentStep + 1);
-      newActions.push(action);
+  const addAction = useCallback(
+    (action: HistoryAction) => {
+      setHistoryState((prevState) => {
+        // Remove any actions after current step (when undoing and then doing new action)
+        const newActions = prevState.actions.slice(
+          0,
+          prevState.currentStep + 1
+        );
+        newActions.push(action);
 
-      return {
-        actions: newActions,
-        currentStep: newActions.length - 1,
-        redoStack: [], // Clear redo stack when new action is added
-      };
-    });
-  }, []);
+        // For drawing actions, trigger replay immediately with the new actions
+        if (action.target === "drawing" && replayManager.current) {
+          // Small delay to ensure canvas is ready
+          setTimeout(() => {
+            if (replayManager.current) {
+              const drawingActions = newActions.filter(
+                (a) => a.target === "drawing"
+              ) as DrawingAction[];
+              replayManager.current.clearDrawingCanvas();
+              drawingActions.forEach((drawingAction) => {
+                replayManager.current!.applyDrawingAction(drawingAction);
+              });
+            }
+          }, 0);
+        }
 
-  const applyKonvaAction = useCallback((action: KonvaAction) => {
-    const { elementType, elementId, data } = action.payload;
+        return {
+          actions: newActions,
+          currentStep: newActions.length - 1,
+          redoStack: [], // Clear redo stack when new action is added
+        };
+      });
+    },
+    [replayManager]
+  );
 
-    switch (action.type) {
-      case "ADD_RECTANGLE":
-        setRectangles((prev) => [...prev, data]);
-        break;
-      case "ADD_CIRCLE":
-        setCircles((prev) => [...prev, data]);
-        break;
-      case "ADD_ARROW":
-        setArrows((prev) => [...prev, data]);
-        break;
-      case "ADD_DOUBLE_ARROW":
-        setDoubleArrows((prev) => [...prev, data]);
-        break;
-      case "ADD_TEXT":
-        setTexts((prev) => [...prev, data]);
-        break;
-      case "MOVE_ELEMENT":
-        switch (elementType) {
-          case "rectangle":
-            setRectangles((prev) =>
-              prev.map((r) => (r.id === elementId ? data : r))
-            );
-            break;
-          case "circle":
-            setCircles((prev) =>
-              prev.map((c) => (c.id === elementId ? data : c))
-            );
-            break;
-          case "arrow":
-            setArrows((prev) =>
-              prev.map((a) => (a.id === elementId ? data : a))
-            );
-            break;
-          case "double-arrow":
-            setDoubleArrows((prev) =>
-              prev.map((d) => (d.id === elementId ? data : d))
-            );
-            break;
-          case "text":
-            setTexts((prev) =>
-              prev.map((t) => (t.id === elementId ? data : t))
-            );
-            break;
-        }
-        break;
-      case "TRANSFORM_ELEMENT":
-        switch (elementType) {
-          case "rectangle":
-            setRectangles((prev) =>
-              prev.map((r) => (r.id === elementId ? data : r))
-            );
-            break;
-          case "circle":
-            setCircles((prev) =>
-              prev.map((c) => (c.id === elementId ? data : c))
-            );
-            break;
-          case "arrow":
-            setArrows((prev) =>
-              prev.map((a) => (a.id === elementId ? data : a))
-            );
-            break;
-          case "double-arrow":
-            setDoubleArrows((prev) =>
-              prev.map((a) => (a.id === elementId ? data : a))
-            );
-            break;
-          case "text":
-            setTexts((prev) =>
-              prev.map((t) => (t.id === elementId ? data : t))
-            );
-            break;
-        }
-        break;
-      case "DELETE_ELEMENT":
-        switch (elementType) {
-          case "rectangle":
-            setRectangles((prev) => prev.filter((r) => r.id !== elementId));
-            break;
-          case "circle":
-            setCircles((prev) => prev.filter((c) => c.id !== elementId));
-            break;
-          case "arrow":
-            setArrows((prev) => prev.filter((a) => a.id !== elementId));
-            break;
-          case "double-arrow":
-            setDoubleArrows((prev) => prev.filter((a) => a.id !== elementId));
-            break;
-          case "text":
-            setTexts((prev) => prev.filter((t) => t.id !== elementId));
-            break;
-        }
-        break;
-    }
-  }, []);
+  // const applyKonvaAction = useCallback((action: KonvaAction) => {
+  //   const { elementType, elementId, data } = action.payload;
+
+  //   switch (action.type) {
+  //     case "ADD_RECTANGLE":
+  //       setRectangles((prev) => [...prev, data]);
+  //       break;
+  //     case "ADD_CIRCLE":
+  //       setCircles((prev) => [...prev, data]);
+  //       break;
+  //     case "ADD_ARROW":
+  //       setArrows((prev) => [...prev, data]);
+  //       break;
+  //     case "ADD_DOUBLE_ARROW":
+  //       setDoubleArrows((prev) => [...prev, data]);
+  //       break;
+  //     case "ADD_TEXT":
+  //       setTexts((prev) => [...prev, data]);
+  //       break;
+  //     case "MOVE_ELEMENT":
+  //       switch (elementType) {
+  //         case "rectangle":
+  //           setRectangles((prev) =>
+  //             prev.map((r) => (r.id === elementId ? data : r))
+  //           );
+  //           break;
+  //         case "circle":
+  //           setCircles((prev) =>
+  //             prev.map((c) => (c.id === elementId ? data : c))
+  //           );
+  //           break;
+  //         case "arrow":
+  //           setArrows((prev) =>
+  //             prev.map((a) => (a.id === elementId ? data : a))
+  //           );
+  //           break;
+  //         case "double-arrow":
+  //           setDoubleArrows((prev) =>
+  //             prev.map((d) => (d.id === elementId ? data : d))
+  //           );
+  //           break;
+  //         case "text":
+  //           setTexts((prev) =>
+  //             prev.map((t) => (t.id === elementId ? data : t))
+  //           );
+  //           break;
+  //       }
+  //       break;
+  //     case "TRANSFORM_ELEMENT":
+  //       switch (elementType) {
+  //         case "rectangle":
+  //           setRectangles((prev) =>
+  //             prev.map((r) => (r.id === elementId ? data : r))
+  //           );
+  //           break;
+  //         case "circle":
+  //           setCircles((prev) =>
+  //             prev.map((c) => (c.id === elementId ? data : c))
+  //           );
+  //           break;
+  //         case "arrow":
+  //           setArrows((prev) =>
+  //             prev.map((a) => (a.id === elementId ? data : a))
+  //           );
+  //           break;
+  //         case "double-arrow":
+  //           setDoubleArrows((prev) =>
+  //             prev.map((a) => (a.id === elementId ? data : a))
+  //           );
+  //           break;
+  //         case "text":
+  //           setTexts((prev) =>
+  //             prev.map((t) => (t.id === elementId ? data : t))
+  //           );
+  //           break;
+  //       }
+  //       break;
+  //     case "DELETE_ELEMENT":
+  //       switch (elementType) {
+  //         case "rectangle":
+  //           setRectangles((prev) => prev.filter((r) => r.id !== elementId));
+  //           break;
+  //         case "circle":
+  //           setCircles((prev) => prev.filter((c) => c.id !== elementId));
+  //           break;
+  //         case "arrow":
+  //           setArrows((prev) => prev.filter((a) => a.id !== elementId));
+  //           break;
+  //         case "double-arrow":
+  //           setDoubleArrows((prev) => prev.filter((a) => a.id !== elementId));
+  //           break;
+  //         case "text":
+  //           setTexts((prev) => prev.filter((t) => t.id !== elementId));
+  //           break;
+  //       }
+  //       break;
+  //   }
+  // }, []);
 
   // Undo functionality
   const undo = useCallback(() => {
@@ -487,6 +509,6 @@ export const useHistoryManager = ({
     textEditorRef,
 
     // Utils
-    replayManager: replayManager.current,
+    replayManager,
   };
 };

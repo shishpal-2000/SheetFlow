@@ -190,7 +190,12 @@ export class CanvasReplayManager {
 
     // If this is a curve arrow, draw arrows at both ends
     if (action.type === "DRAW_CURVE_ARROW" && points.length >= 2) {
-      this.drawArrow(ctx, points[Math.max(0, points.length - 2)], points[points.length - 1], action.payload.strokeWidth);
+      this.drawArrow(
+        ctx,
+        points[Math.max(0, points.length - 2)],
+        points[points.length - 1],
+        action.payload.strokeWidth
+      );
       this.drawArrow(ctx, points[1], points[0], action.payload.strokeWidth);
     }
   }

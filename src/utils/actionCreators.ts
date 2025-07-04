@@ -17,7 +17,8 @@ export class ActionCreators {
     isEraser?: boolean,
     shape?: "line" | "curve" | "curve-arrow",
     startPoint?: Point,
-    endPoint?: Point
+    endPoint?: Point,
+    isPartialCurve?: boolean
   ): DrawingAction {
     return {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -33,7 +34,7 @@ export class ActionCreators {
         shape,
         startPoint,
         endPoint,
-        isPartialCurve: true,
+        isPartialCurve: isPartialCurve ?? false, // Default to false for completed actions
         curveId: "", // Optional, can be set later if needed
       },
     };
