@@ -35,10 +35,12 @@ import {
 import Curve from "../ui/Icons/curve";
 import DoubleArrowCurve from "../ui/Icons/curve-double-arrow";
 import { useEffect } from "react";
+import { HistoryAction } from "@/types/history";
 
 interface MobileViewProps {
   undo: () => void;
   historyStep: number;
+  history: HistoryAction[];
   redo: () => void;
   setActiveTool: (tool: DrawingTool | null) => void;
   activeTool: DrawingTool | null;
@@ -81,6 +83,7 @@ interface MobileViewProps {
 const MobileView = ({
   undo,
   historyStep,
+  history,
   redo,
   setActiveTool,
   activeTool,

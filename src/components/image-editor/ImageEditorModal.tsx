@@ -2684,6 +2684,7 @@ export default function ImageEditorModal({
             <MobileView
               undo={undo}
               historyStep={historyState.currentStep}
+              history={historyState.actions}
               redo={redo}
               setActiveTool={setActiveTool}
               activeTool={activeTool}
