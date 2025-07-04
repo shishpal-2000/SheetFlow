@@ -303,6 +303,96 @@ export default function ImageEditorModal({
     [createAction, addAction]
   );
 
+  const handleKonvaRectMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording rectangle move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "rectangle",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaCircleMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording circle move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "circle",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaArrowMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording arrow move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "arrow",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaDoubleArrowMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording double arrow move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "double-arrow",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaTextMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording text move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "text",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
   const handleKonvaCircleAdd = useCallback(
     (circle: any) => {
       console.log("Recording circle action:", circle);
@@ -1352,6 +1442,11 @@ export default function ImageEditorModal({
       return;
     }
 
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
+      return;
+    }
+
     if (activeTool === "crop") {
       // Clear any existing crop area
       const ctx = drawingCanvasRef.current?.getContext("2d");
@@ -1399,6 +1494,11 @@ export default function ImageEditorModal({
 
     if (activeTool === "text" || !isDrawing) return;
 
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
+      return;
+    }
+
     const drawingCanvas = drawingCanvasRef.current;
     const ctx = drawingCanvas?.getContext("2d");
     if (!drawingCanvas || !ctx) return;
@@ -1443,7 +1543,7 @@ export default function ImageEditorModal({
 
     if (
       activeTool &&
-      ["line", "curve", "curve-arrow"].includes(activeTool) &&
+      ["line"].includes(activeTool) &&
       startPoint
     ) {
       // Clear and redraw with preview
@@ -1484,59 +1584,6 @@ export default function ImageEditorModal({
         ctx.moveTo(startPoint.x, startPoint.y);
         ctx.lineTo(currentPos.x, currentPos.y);
         ctx.stroke();
-      } else if (activeTool === "curve") {
-        // Use the middle point between start and current as control point
-        const midPoint = {
-          x: (startPoint.x + currentPos.x) / 2,
-          y: startPoint.y - 50, // Offset for curve effect
-        };
-
-        ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.quadraticCurveTo(
-          midPoint.x,
-          midPoint.y,
-          currentPos.x,
-          currentPos.y
-        );
-        ctx.stroke();
-      } else if (activeTool === "curve-arrow") {
-        // Draw curve
-        const midPoint = {
-          x: (startPoint.x + currentPos.x) / 2,
-          y: startPoint.y - 50,
-        };
-
-        ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.quadraticCurveTo(
-          midPoint.x,
-          midPoint.y,
-          currentPos.x,
-          currentPos.y
-        );
-        ctx.stroke();
-
-        // Draw arrow head
-        const headlen = 15;
-        const angle = Math.atan2(
-          currentPos.y - midPoint.y,
-          currentPos.x - midPoint.x
-        );
-
-        ctx.beginPath();
-        ctx.moveTo(currentPos.x, currentPos.y);
-        ctx.lineTo(
-          currentPos.x - headlen * Math.cos(angle - Math.PI / 7),
-          currentPos.y - headlen * Math.sin(angle - Math.PI / 7)
-        );
-        ctx.lineTo(
-          currentPos.x - headlen * Math.cos(angle + Math.PI / 7),
-          currentPos.y - headlen * Math.sin(angle + Math.PI / 7)
-        );
-        ctx.lineTo(currentPos.x, currentPos.y);
-        ctx.fillStyle = currentColor;
-        ctx.fill();
       }
 
       ctx.restore();
@@ -1565,6 +1612,11 @@ export default function ImageEditorModal({
       return;
     }
 
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
+      return;
+    }
+
     if (!isDrawing) return;
     const ctx = drawingCanvasRef.current?.getContext("2d");
 
@@ -1588,15 +1640,6 @@ export default function ImageEditorModal({
           );
           addAction(action);
         }
-      } else if (activeTool && ["curve", "curve-arrow"].includes(activeTool)) {
-        // ✅ FIX: For curve tools, don't record action on every mouse up
-        // The CurveTool and CurveArrowTool components should handle their own action recording
-        // when the curve is completed (double-click or finish)
-
-        // Don't record action here - let the curve tool components handle it
-        console.log(
-          "Curve tool mouse up - letting tool component handle action recording"
-        );
       } else if (activeTool && startPoint) {
         // Handle other tools (line, etc.)
         const endPoint = currentStroke[currentStroke.length - 1] || startPoint;
@@ -2341,6 +2384,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaRectAdd}
+                      onMove={handleKonvaRectMove}
                       rectangles={rectangles}
                       setRectangles={setRectangles}
                       onFlatten={handleKonvaRectFlatten}
@@ -2369,6 +2413,7 @@ export default function ImageEditorModal({
                       circles={circles}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaCircleAdd}
+                      onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
                       onFlatten={handleKonvaCircleFlatten}
                       onElementSelect={(id, type) => {
@@ -2394,6 +2439,7 @@ export default function ImageEditorModal({
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
+                      onMove={handleKonvaArrowMove}
                       arrows={arrows}
                       setArrows={setArrows} // Use history-aware setter
                       onFlatten={handleKonvaArrowFlatten}
@@ -2421,6 +2467,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
+                      onMove={handleKonvaDoubleArrowMove}
                       setArrows={setDoubleArrows} // Use history-aware setter
                       onFlatten={handleKonvaDoubleArrowFlatten}
                       onElementSelect={(id, type) => {
@@ -2447,6 +2494,7 @@ export default function ImageEditorModal({
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}
+                      onMove={handleKonvaTextMove}
                       texts={texts}
                       setTexts={setTexts}
                       onFlatten={handleTextFlatten}
@@ -2474,6 +2522,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaRectAdd}
+                      onMove={handleKonvaRectMove}
                       rectangles={rectangles}
                       setRectangles={setRectangles}
                       onFlatten={handleKonvaRectFlatten}
@@ -2502,6 +2551,7 @@ export default function ImageEditorModal({
                       circles={circles}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaCircleAdd}
+                      onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
                       onFlatten={handleKonvaCircleFlatten}
                       onElementSelect={(id, type) => {
@@ -2527,6 +2577,7 @@ export default function ImageEditorModal({
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
+                      onMove={handleKonvaArrowMove}
                       arrows={arrows}
                       setArrows={setArrows} // Use history-aware setter
                       onFlatten={handleKonvaArrowFlatten}
@@ -2554,6 +2605,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
+                      onMove={handleKonvaDoubleArrowMove}
                       setArrows={setDoubleArrows} // Use history-aware setter
                       onFlatten={handleKonvaDoubleArrowFlatten}
                       onElementSelect={(id, type) => {
@@ -2580,6 +2632,7 @@ export default function ImageEditorModal({
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}
+                      onMove={handleKonvaTextMove}
                       texts={texts}
                       setTexts={setTexts}
                       onFlatten={handleTextFlatten}

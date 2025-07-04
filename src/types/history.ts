@@ -18,11 +18,7 @@ export interface DrawingAction extends BaseAction {
     | "DRAW_ERASER"
     | "DRAW_LINE"
     | "DRAW_CURVE"
-    | "DRAW_CURVE_ARROW"
-    | "CURVE_ADD_POINT"
-    | "CURVE_ARROW_ADD_POINT"
-    | "CURVE_FINALIZE"
-    | "CURVE_ARROW_FINALIZE";
+    | "DRAW_CURVE_ARROW";
   payload: {
     points: Point[];
     color: string;

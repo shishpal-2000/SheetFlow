@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { DrawingTool } from "./ImageEditorModal";
+import { DrawingTool, StrokeStyle } from "./ImageEditorModal";
+import { ActionCreators } from "@/utils/actionCreators";
 
 interface Point {
   x: number;
@@ -12,7 +13,7 @@ interface CurveToolProps {
   currentColor: string;
   setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
-  strokeStyle: string;
+  strokeStyle: StrokeStyle;
   brushSize: number;
   createAction?: (
     target: "drawing" | "konva" | "base",
@@ -41,23 +42,6 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [drawing, setDrawing] = useState<boolean>(active);
-
-  const recordCurveArrowAction = useCallback(
-    (curvePoints: Point[]) => {
-      if (createAction && addAction && curvePoints.length > 1) {
-        const action = createAction("drawing", "DRAW_CURVE_ARROW", {
-          points: curvePoints,
-          color: currentColor,
-          strokeWidth: brushSize,
-          strokeStyle,
-          isEraser: false,
-        });
-        addAction(action);
-        console.log("Curve-arrow action recorded:", action);
-      }
-    },
-    [createAction, addAction, currentColor, brushSize, strokeStyle]
-  );
 
   const drawArrow = (
     ctx: CanvasRenderingContext2D,
@@ -209,7 +193,11 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
     const pos = getMousePos(e);
 
     if (drawing) {
-      setCurrentCurve((prev) => [...prev, pos]);
+      setCurrentCurve((prev) => {
+        const newCurve = [...prev, pos];
+        console.log("CurveArrowTool: Added point", pos, "to curve. Total points:", newCurve.length, "- NOT creating action yet");
+        return newCurve;
+      });
       return;
     }
 
@@ -259,6 +247,20 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && drawing && currentCurve.length > 1) {
+      console.log("CurveArrowTool: Creating single DRAW_CURVE_ARROW action with", currentCurve.length, "points");
+      
+      // Create a DRAW_CURVE_ARROW action using ActionCreators
+      if (addAction) {
+        const action = ActionCreators.drawDoubleCurve(
+          currentCurve,
+          currentColor,
+          brushSize,
+          strokeStyle
+        );
+        console.log("CurveArrowTool: Adding action:", action);
+        addAction(action);
+      }
+
       // Add the current curve to the curves array
       const newCurve = [...currentCurve];
       setCurves((prev) => [...prev, newCurve]);

@@ -83,23 +83,6 @@ export class CanvasReplayManager {
         this.drawLine(ctx, startPoint!, endPoint!);
         break;
 
-      case "CURVE_ADD_POINT":
-        // case "CURVE_ARROW_ADD_POINT":
-        // ✅ Draw partial curve (in progress)
-        this.drawPartialCurve(
-          ctx,
-          points,
-          action.type.includes("ARROW"),
-          color
-        );
-        break;
-
-      // case "CURVE_FINALIZE":
-      // case "CURVE_ARROW_FINALIZE":
-      //   // ✅ Draw final curve
-      //   this.drawCurve(ctx, points, action, color);
-      //   break;
-
       case "DRAW_CURVE":
       case "DRAW_CURVE_ARROW":
         this.drawCurve(ctx, points, action, color);
@@ -204,51 +187,49 @@ export class CanvasReplayManager {
     }
 
     ctx.stroke();
+
+    // If this is a curve arrow, draw arrows at both ends
+    if (action.type === "DRAW_CURVE_ARROW" && points.length >= 2) {
+      this.drawArrow(ctx, points[Math.max(0, points.length - 2)], points[points.length - 1], action.payload.strokeWidth);
+      this.drawArrow(ctx, points[1], points[0], action.payload.strokeWidth);
+    }
   }
 
-  private drawPartialCurve(
+  private drawArrow(
     ctx: CanvasRenderingContext2D,
-    points: Point[],
-    isArrow: boolean,
-    color?: string
+    from: Point,
+    to: Point,
+    size: number
   ): void {
-    if (points.length < 1) return;
+    const headLength = Math.max(10, size * 2);
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
 
-    if (points.length === 1) {
-      // Draw single point
-      ctx.beginPath();
-      ctx.arc(points[0].x, points[0].y, 5, 0, 2 * Math.PI);
-      ctx.fillStyle = color || "#000000";
-      ctx.fill();
-    } else {
-      // ✅ Use the same curve drawing logic as your CurveTool
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
+    // Calculate the actual end point considering the brush size
+    const endX = to.x - Math.cos(angle) * (size / 2);
+    const endY = to.y - Math.sin(angle) * (size / 2);
 
-      for (let i = 0; i < points.length - 1; i++) {
-        const p0 = points[i - 1] || points[i];
-        const p1 = points[i];
-        const p2 = points[i + 1];
-        const p3 = points[i + 2] || p2;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
 
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
+    // Draw arrow head
+    ctx.beginPath();
+    // First line of the arrow head
+    ctx.moveTo(
+      endX - headLength * Math.cos(angle - Math.PI / 6),
+      endY - headLength * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(endX, endY);
+    // Second line of the arrow head
+    ctx.lineTo(
+      endX - headLength * Math.cos(angle + Math.PI / 6),
+      endY - headLength * Math.sin(angle + Math.PI / 6)
+    );
 
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-      }
-
-      ctx.stroke();
-
-      // Show control points for partial curves (like your CurveTool does)
-      // points.forEach((pt) => {
-      //   ctx.beginPath();
-      //   ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
-      //   ctx.fillStyle = color || "#000000";
-      //   ctx.fill();
-      // });
-    }
+    // Set the line width for the arrow head (slightly thicker for better visibility)
+    ctx.lineWidth = Math.max(1, size * 0.8);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private applyBlackAndWhiteFilter(ctx: CanvasRenderingContext2D): void {

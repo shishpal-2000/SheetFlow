@@ -31,6 +31,7 @@ interface KonvaCircleProps {
   strokeStyle: StrokeStyle;
   backgroundColor?: string; // Optional background color prop
   onAdd?: (circle: KonvaCircleShape) => void; // Callback when a new circle is added
+  onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   circles: KonvaCircleShape[];
   setCircles: React.Dispatch<React.SetStateAction<KonvaCircleShape[]>>;
   onFlatten: (circles: KonvaCircleShape[]) => void;
@@ -55,6 +56,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       strokeStyle,
       backgroundColor,
       onAdd,
+      onMove, // Destructure onMove prop
       circles,
       setCircles,
       onFlatten,
@@ -174,28 +176,40 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         onElementSelect(id, "circle");
       }
     };
-
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Get the previous circle data before transforming
+      const previousCircle = circles.find((c) => c.id === id);
+
       const scaleX = node.scaleX();
-      
+
       const newRadius = Math.max(node.radius() * scaleX, 5);
-      
+
       node.scaleX(1);
       // node.scaleY(1);
 
-      setCircles((cs) =>
-        cs.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                radius: newRadius,
-                x: node.x(),
-                y: node.y(),
-              }
-            : c
-        )
-      );
+      // Create the new circle data
+      const newCircle = {
+        ...previousCircle!,
+        radius: newRadius,
+        x: node.x(),
+        y: node.y(),
+      };
+
+      setCircles((cs) => cs.map((c) => (c.id === id ? newCircle : c)));
+
+      // Call onMove prop for history tracking if radius or position changed
+      if (onMove && previousCircle) {
+        const hasChanged =
+          previousCircle.radius !== newRadius ||
+          previousCircle.x !== node.x() ||
+          previousCircle.y !== node.y();
+
+        if (hasChanged) {
+          onMove(id, newCircle, previousCircle);
+        }
+      }
     };
 
     const handleDragMove = (e: any, id: string) => {
@@ -221,6 +235,14 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       const node = e.target;
       const { x, y } = node.position();
 
+      // Get the previous circle data before moving
+      const previousCircle = circles.find((c) => c.id === id);
+
+      // Reset trash zone state
+      if (updateTrashZoneState) {
+        updateTrashZoneState(false);
+      }
+
       // Get screen coordinates
       const stageContainer = stage.container();
       const stageRect = stageContainer.getBoundingClientRect();
@@ -239,10 +261,20 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         return;
       }
 
-      // Normal drag behavior
+      // Normal drag behavior - update position
       setCircles((circles) =>
         circles.map((c) => (c.id === id ? { ...c, x, y } : c))
       );
+
+      // Call onMove prop for history tracking if position actually changed
+      if (
+        onMove &&
+        previousCircle &&
+        (previousCircle.x !== x || previousCircle.y !== y)
+      ) {
+        const newCircle = { ...previousCircle, x, y };
+        onMove(id, newCircle, previousCircle);
+      }
     };
 
     useEffect(() => {

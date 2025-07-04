@@ -199,6 +199,21 @@ export class ActionCreators {
     );
   }
 
+  static moveKonvaShape(
+    elementType: KonvaAction["payload"]["elementType"],
+    elementId: string,
+    newData: any,
+    previousData: any
+  ): KonvaAction {
+    return this.createKonvaAction(
+      "MOVE_ELEMENT",
+      elementType,
+      elementId,
+      newData,
+      previousData
+    );
+  }
+
   static cropImage(cropArea: any, imageData: ImageData): BaseCanvasAction {
     return this.createBaseAction("CROP_IMAGE", { cropArea, imageData });
   }
@@ -206,4 +221,18 @@ export class ActionCreators {
   static applyFilter(filterType: "blackAndWhite"): BaseCanvasAction {
     return this.createBaseAction("APPLY_FILTER", { filterType });
   }
+}
+
+export function handleKonvaShapeMove(
+  elementType: KonvaAction["payload"]["elementType"],
+  elementId: string,
+  newData: any,
+  previousData: any
+): KonvaAction {
+  return ActionCreators.moveKonvaShape(
+    elementType,
+    elementId,
+    newData,
+    previousData
+  );
 }

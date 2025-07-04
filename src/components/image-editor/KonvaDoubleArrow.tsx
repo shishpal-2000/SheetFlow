@@ -26,6 +26,7 @@ interface KonvaDoubleArrowProps {
   brushSize: number;
   strokeStyle: StrokeStyle;
   onAdd?: (arrow: KonvaDoubleArrowShape) => void; // Callback when a new arrow is added
+  onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   arrows: KonvaDoubleArrowShape[];
   setArrows: React.Dispatch<React.SetStateAction<KonvaDoubleArrowShape[]>>;
   onFlatten: (arrows: KonvaDoubleArrowShape[]) => void;
@@ -52,6 +53,7 @@ const KonvaDoubleArrow = forwardRef<
       brushSize,
       strokeStyle,
       onAdd,
+      onMove, // Destructure onMove prop
       arrows,
       setArrows,
       onFlatten,
@@ -344,6 +346,9 @@ const KonvaDoubleArrow = forwardRef<
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
 
+      // Get the previous double arrow data before transforming
+      const previousArrow = arrows.find((a) => a.id === id);
+
       // Extract scale, rotation, and current node transformations
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
@@ -391,17 +396,25 @@ const KonvaDoubleArrow = forwardRef<
       node.x(0);
       node.y(0);
 
+      // Create the new arrow data
+      const newArrow = {
+        ...previousArrow!,
+        points: constrainedPoints,
+      };
+
       // Update arrow state with constrained points
-      setArrows((arrs) =>
-        arrs.map((a) =>
-          a.id === id
-            ? {
-                ...a,
-                points: constrainedPoints,
-              }
-            : a
-        )
-      );
+      setArrows((arrs) => arrs.map((a) => (a.id === id ? newArrow : a)));
+
+      // Call onMove prop for history tracking if transformation changed the arrow
+      if (onMove && previousArrow) {
+        const hasChanged = !previousArrow.points.every(
+          (point, index) => point === constrainedPoints[index]
+        );
+
+        if (hasChanged) {
+          onMove(id, newArrow, previousArrow);
+        }
+      }
     };
 
     const handleDragMove = (e: any, id: string) => {
@@ -434,6 +447,9 @@ const KonvaDoubleArrow = forwardRef<
       const stage = e.target.getStage();
       const x = node.x();
       const y = node.y();
+
+      // Get the previous double arrow data before moving
+      const previousArrow = arrows.find((a) => a.id === id);
 
       if (updateTrashZoneState) {
         updateTrashZoneState(false);
@@ -485,17 +501,25 @@ const KonvaDoubleArrow = forwardRef<
       node.x(0);
       node.y(0);
 
+      // Create the new arrow data
+      const newArrow = {
+        ...previousArrow!,
+        points: newPoints,
+      };
+
       // Update arrow state
-      setArrows((arrs) =>
-        arrs.map((a) =>
-          a.id === id
-            ? {
-                ...a,
-                points: newPoints,
-              }
-            : a
-        )
-      );
+      setArrows((arrs) => arrs.map((a) => (a.id === id ? newArrow : a)));
+
+      // Call onMove prop for history tracking if position actually changed
+      if (onMove && previousArrow) {
+        const hasChanged = !previousArrow.points.every(
+          (point, index) => point === newPoints[index]
+        );
+
+        if (hasChanged) {
+          onMove(id, newArrow, previousArrow);
+        }
+      }
     };
 
     return (

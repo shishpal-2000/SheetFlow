@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { DrawingTool } from "./ImageEditorModal";
+import { DrawingTool, StrokeStyle } from "./ImageEditorModal";
+import { ActionCreators } from "@/utils/actionCreators";
 
 interface Point {
   x: number;
@@ -12,7 +13,7 @@ interface CurveToolProps {
   currentColor: string;
   setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
-  strokeStyle: string;
+  strokeStyle: StrokeStyle;
   brushSize: number;
   createAction?: (
     target: "drawing" | "konva" | "base",
@@ -151,20 +152,9 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     if (drawing) {
       const newCurve = [...currentCurve, pos];
       setCurrentCurve(newCurve);
+      console.log("CurveTool: Added point", pos, "to curve. Total points:", newCurve.length, "- NOT creating action yet");
 
-      if (createAction && addAction) {
-        const action = createAction("drawing", "CURVE_ADD_POINT", {
-          points: newCurve,
-          color: currentColor,
-          strokeWidth: brushSize,
-          strokeStyle,
-          isEraser: false,
-          isPartialCurve: true,
-          curveId: curveId,
-        });
-        addAction(action);
-      }
-
+      // Don't create individual point actions - we'll create a single action when curve is complete
       return;
     }
 
@@ -192,18 +182,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     setCurrentCurve([pos]);
     setDrawing(true);
 
-    if (createAction && addAction) {
-      const action = createAction("drawing", "CURVE_ADD_POINT", {
-        points: newCurve,
-        color: currentColor,
-        strokeWidth: brushSize,
-        strokeStyle,
-        isEraser: false,
-        isPartialCurve: true,
-        curveId: curveId,
-      });
-      addAction(action);
-    }
+    // Don't create action for starting a curve - only when it's complete
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -228,17 +207,17 @@ export const CurveTool: React.FC<CurveToolProps> = ({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && drawing && currentCurve.length > 1) {
-      // Clear the canvas first to remove everything
-      if (createAction && addAction) {
-        const action = createAction("drawing", "DRAW_CURVE", {
-          points: currentCurve,
-          color: currentColor,
-          strokeWidth: brushSize,
-          strokeStyle,
-          isEraser: false,
-          isPartialCurve: false,
-          curveId: curveId,
-        });
+      console.log("CurveTool: Creating single DRAW_CURVE action with", currentCurve.length, "points");
+      
+      // Create a single DRAW_CURVE action using ActionCreators
+      if (addAction) {
+        const action = ActionCreators.drawCurve(
+          currentCurve,
+          currentColor,
+          brushSize,
+          strokeStyle
+        );
+        console.log("CurveTool: Adding action:", action);
         addAction(action);
       }
 

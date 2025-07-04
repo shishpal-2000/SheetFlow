@@ -32,6 +32,7 @@ interface TextEditorProps {
   fontSize: number;
   fontFamily: string;
   onAdd?: (text: KonvaTextShape) => void; // Callback when a new text is added
+  onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   texts: KonvaTextShape[];
   setTexts: React.Dispatch<React.SetStateAction<KonvaTextShape[]>>;
   onFlatten: (texts: KonvaTextShape[]) => void;
@@ -56,6 +57,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       fontSize,
       fontFamily,
       onAdd,
+      onMove, // Destructure onMove prop
       texts,
       setTexts,
       onFlatten,
@@ -252,6 +254,13 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       const stage = e.target.getStage();
       const { x, y } = group.position();
 
+      // Get the previous text data before moving
+      const previousText = texts.find((t) => t.id === id);
+
+      if (updateTrashZoneState) {
+        updateTrashZoneState(false);
+      }
+
       // Get the stage's position on screen
       const stageContainer = stage.container();
       const stageRect = stageContainer.getBoundingClientRect();
@@ -279,7 +288,22 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       }
 
       // Normal drag behavior - update text position
-      setTexts((arr) => arr.map((t) => (t.id === id ? { ...t, x, y } : t)));
+      const newText = {
+        ...previousText!,
+        x,
+        y,
+      };
+
+      setTexts((arr) => arr.map((t) => (t.id === id ? newText : t)));
+
+      // Call onMove prop for history tracking if position actually changed
+      if (onMove && previousText) {
+        const hasChanged = previousText.x !== x || previousText.y !== y;
+
+        if (hasChanged) {
+          onMove(id, newText, previousText);
+        }
+      }
     };
 
     // Double-click on existing text to edit
@@ -433,6 +457,45 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       );
     };
 
+    // Transform handler for scaling
+    const handleTransformEnd = (e: any, id: string) => {
+      const group = e.target;
+
+      // Get the previous text data before transforming
+      const previousText = texts.find((t) => t.id === id);
+
+      // Extract scale and position from the group
+      const scaleX = group.scaleX();
+      const scaleY = group.scaleY();
+      const x = group.x();
+      const y = group.y();
+
+      // Create the new text data
+      const newText = {
+        ...previousText!,
+        x,
+        y,
+        scaleX,
+        scaleY,
+      };
+
+      // Update text state
+      setTexts((arr) => arr.map((t) => (t.id === id ? newText : t)));
+
+      // Call onMove prop for history tracking if transformation changed the text
+      if (onMove && previousText) {
+        const hasChanged =
+          previousText.x !== x ||
+          previousText.y !== y ||
+          (previousText.scaleX || 1) !== scaleX ||
+          (previousText.scaleY || 1) !== scaleY;
+
+        if (hasChanged) {
+          onMove(id, newText, previousText);
+        }
+      }
+    };
+
     return (
       <div style={{ width, height, position: "absolute", inset: 0 }}>
         <Stage
@@ -523,6 +586,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                   onDblClick={(e) => handleDblClick(e, t.id)}
                   onDragMove={(e) => handleDragMove(e, t.id)}
                   onDragEnd={(e) => handleDragEnd(e, t.id)}
+                  onTransformEnd={(e) => handleTransformEnd(e, t.id)} // Handle transform end
                 >
                   <Rect
                     width={width}

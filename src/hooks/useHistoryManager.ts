@@ -225,38 +225,15 @@ export const useHistoryManager = ({
     switch (actionToUndo.target) {
       case "drawing":
         // For drawing actions, we need to replay all remaining drawing actions
-        if (
-          actionToUndo.type === "CURVE_ADD_POINT" ||
-          actionToUndo.type === "CURVE_ARROW_ADD_POINT"
-        ) {
-          // For partial curves, we need to replay all remaining actions
-          // This will show the curve with one less point
-          if (replayManager.current) {
-            const remainingDrawingActions = historyState.actions
-              .slice(0, historyState.currentStep)
-              .filter(
-                (action) => action.target === "drawing"
-              ) as DrawingAction[];
+        if (replayManager.current) {
+          const remainingDrawingActions = historyState.actions
+            .slice(0, historyState.currentStep)
+            .filter((action) => action.target === "drawing") as DrawingAction[];
 
-            replayManager.current.clearDrawingCanvas();
-            remainingDrawingActions.forEach((action) => {
-              replayManager.current!.applyDrawingAction(action);
-            });
-          }
-        } else {
-          // Handle other drawing actions normally
-          if (replayManager.current) {
-            const remainingDrawingActions = historyState.actions
-              .slice(0, historyState.currentStep)
-              .filter(
-                (action) => action.target === "drawing"
-              ) as DrawingAction[];
-
-            replayManager.current.clearDrawingCanvas();
-            remainingDrawingActions.forEach((action) => {
-              replayManager.current!.applyDrawingAction(action);
-            });
-          }
+          replayManager.current.clearDrawingCanvas();
+          remainingDrawingActions.forEach((action) => {
+            replayManager.current!.applyDrawingAction(action);
+          });
         }
         break;
       case "base":
@@ -289,6 +266,58 @@ export const useHistoryManager = ({
             setTexts((prev) =>
               prev.filter((t) => t.id !== konvaAction.payload.elementId)
             );
+            break;
+          case "MOVE_ELEMENT":
+            // For move actions, restore the previous state
+            if (konvaAction.payload.previousData) {
+              switch (konvaAction.payload.elementType) {
+                case "rectangle":
+                  setRectangles((prev) =>
+                    prev.map((r) =>
+                      r.id === konvaAction.payload.elementId
+                        ? konvaAction.payload.previousData
+                        : r
+                    )
+                  );
+                  break;
+                case "circle":
+                  setCircles((prev) =>
+                    prev.map((c) =>
+                      c.id === konvaAction.payload.elementId
+                        ? konvaAction.payload.previousData
+                        : c
+                    )
+                  );
+                  break;
+                case "arrow":
+                  setArrows((prev) =>
+                    prev.map((a) =>
+                      a.id === konvaAction.payload.elementId
+                        ? konvaAction.payload.previousData
+                        : a
+                    )
+                  );
+                  break;
+                case "double-arrow":
+                  setDoubleArrows((prev) =>
+                    prev.map((d) =>
+                      d.id === konvaAction.payload.elementId
+                        ? konvaAction.payload.previousData
+                        : d
+                    )
+                  );
+                  break;
+                case "text":
+                  setTexts((prev) =>
+                    prev.map((t) =>
+                      t.id === konvaAction.payload.elementId
+                        ? konvaAction.payload.previousData
+                        : t
+                    )
+                  );
+                  break;
+              }
+            }
             break;
         }
         break;
@@ -346,6 +375,56 @@ export const useHistoryManager = ({
             break;
           case "ADD_TEXT":
             setTexts((prev) => [...prev, konvaAction.payload.data]);
+            break;
+          case "MOVE_ELEMENT":
+            // For redo move actions, apply the new state
+            switch (konvaAction.payload.elementType) {
+              case "rectangle":
+                setRectangles((prev) =>
+                  prev.map((r) =>
+                    r.id === konvaAction.payload.elementId
+                      ? konvaAction.payload.data
+                      : r
+                  )
+                );
+                break;
+              case "circle":
+                setCircles((prev) =>
+                  prev.map((c) =>
+                    c.id === konvaAction.payload.elementId
+                      ? konvaAction.payload.data
+                      : c
+                  )
+                );
+                break;
+              case "arrow":
+                setArrows((prev) =>
+                  prev.map((a) =>
+                    a.id === konvaAction.payload.elementId
+                      ? konvaAction.payload.data
+                      : a
+                  )
+                );
+                break;
+              case "double-arrow":
+                setDoubleArrows((prev) =>
+                  prev.map((d) =>
+                    d.id === konvaAction.payload.elementId
+                      ? konvaAction.payload.data
+                      : d
+                  )
+                );
+                break;
+              case "text":
+                setTexts((prev) =>
+                  prev.map((t) =>
+                    t.id === konvaAction.payload.elementId
+                      ? konvaAction.payload.data
+                      : t
+                  )
+                );
+                break;
+            }
             break;
         }
         break;

@@ -26,6 +26,7 @@ interface KonvaArrowProps {
   brushSize: number;
   strokeStyle: StrokeStyle;
   onAdd?: (arrow: KonvaArrow) => void; // Callback when a new arrow is added
+  onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   arrows: KonvaArrow[];
   setArrows: React.Dispatch<React.SetStateAction<KonvaArrow[]>>;
   onFlatten: (arrows: KonvaArrow[]) => void;
@@ -49,6 +50,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       brushSize,
       strokeStyle,
       onAdd,
+      onMove, // Destructure onMove prop
       arrows,
       setArrows,
       onFlatten,
@@ -340,6 +342,9 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
 
+      // Get the previous arrow data before transforming
+      const previousArrow = arrows.find((a) => a.id === id);
+
       // Reset transformations after applying them
       const scaleX = node.scaleX();
       const scaleY = node.scaleY();
@@ -388,17 +393,25 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       node.x(0);
       node.y(0);
 
+      // Create the new arrow data
+      const newArrow = {
+        ...previousArrow!,
+        points: constrainedPoints,
+      };
+
       // Update the arrow state
-      setArrows((arrs) =>
-        arrs.map((a) =>
-          a.id === id
-            ? {
-                ...a,
-                points: constrainedPoints,
-              }
-            : a
-        )
-      );
+      setArrows((arrs) => arrs.map((a) => (a.id === id ? newArrow : a)));
+
+      // Call onMove prop for history tracking if transformation changed the arrow
+      if (onMove && previousArrow) {
+        const hasChanged = !previousArrow.points.every(
+          (point, index) => point === constrainedPoints[index]
+        );
+
+        if (hasChanged) {
+          onMove(id, newArrow, previousArrow);
+        }
+      }
     };
 
     const handleDragMove = (e: any, id: string) => {
@@ -431,6 +444,9 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       const stage = e.target.getStage();
       const x = node.x();
       const y = node.y();
+
+      // Get the previous arrow data before moving
+      const previousArrow = arrows.find((a) => a.id === id);
 
       if (updateTrashZoneState) {
         updateTrashZoneState(false);
@@ -477,16 +493,24 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       node.x(0);
       node.y(0);
 
-      setArrows((arrs) =>
-        arrs.map((a) =>
-          a.id === id
-            ? {
-                ...a,
-                points: newPoints,
-              }
-            : a
-        )
-      );
+      // Create the new arrow data
+      const newArrow = {
+        ...previousArrow!,
+        points: newPoints,
+      };
+
+      setArrows((arrs) => arrs.map((a) => (a.id === id ? newArrow : a)));
+
+      // Call onMove prop for history tracking if position actually changed
+      if (onMove && previousArrow) {
+        const hasChanged = !previousArrow.points.every(
+          (point, index) => point === newPoints[index]
+        );
+
+        if (hasChanged) {
+          onMove(id, newArrow, previousArrow);
+        }
+      }
     };
 
     return (
