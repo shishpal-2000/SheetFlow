@@ -39,9 +39,11 @@ import { HistoryAction } from "@/types/history";
 
 interface MobileViewProps {
   undo: () => void;
+  canUndo: boolean;
   historyStep: number;
   history: HistoryAction[];
   redo: () => void;
+  canRedo: boolean;
   setActiveTool: (tool: DrawingTool | null) => void;
   activeTool: DrawingTool | null;
   drawingCanvasRef: React.RefObject<HTMLCanvasElement>;
@@ -82,9 +84,11 @@ interface MobileViewProps {
 
 const MobileView = ({
   undo,
+  canUndo,
   historyStep,
   history,
   redo,
+  canRedo,
   setActiveTool,
   activeTool,
   drawingCanvasRef,
@@ -121,7 +125,7 @@ const MobileView = ({
             variant="ghost"
             size="icon"
             onClick={undo}
-            disabled={historyStep <= 0}
+            disabled={!canUndo}
             title="Undo"
             className="flex-1"
           >
@@ -131,7 +135,7 @@ const MobileView = ({
             variant="ghost"
             size="icon"
             onClick={redo}
-            disabled={historyStep >= history.length - 1}
+            disabled={!canRedo}
             title="Redo"
             className="flex-1 mr-2"
           >

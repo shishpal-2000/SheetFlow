@@ -1344,7 +1344,7 @@ export default function ImageEditorModal({
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    e.preventDefault();
+    // e.preventDefault();
     const pos = getMousePos(e);
 
     if (activeTool === "text") {
@@ -1394,7 +1394,7 @@ export default function ImageEditorModal({
   const draw = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
-    e.preventDefault();
+    // e.preventDefault();
     const currentPos = getMousePos(e);
 
     if (activeTool === "text" || !isDrawing) return;
@@ -2683,9 +2683,11 @@ export default function ImageEditorModal({
           <div className="lg:hidden">
             <MobileView
               undo={undo}
+              canUndo={canUndo}
               historyStep={historyState.currentStep}
               history={historyState.actions}
               redo={redo}
+              canRedo={canRedo}
               setActiveTool={setActiveTool}
               activeTool={activeTool}
               drawingCanvasRef={drawingCanvasRef}
