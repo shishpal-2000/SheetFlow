@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DrawingTool } from "./ImageEditorModal";
 
 interface Point {
@@ -14,6 +14,12 @@ interface CurveToolProps {
   onFinishCurve?: (curve: Point[]) => void;
   strokeStyle: string;
   brushSize: number;
+  createAction?: (
+    target: "drawing" | "konva" | "base",
+    type: string,
+    payload: any
+  ) => void;
+  addAction?: (action: any) => void;
 }
 
 const CurveArrowTool: React.FC<CurveToolProps> = ({
@@ -24,6 +30,8 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
   currentColor,
   strokeStyle,
   brushSize,
+  createAction,
+  addAction,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -33,6 +41,23 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [drawing, setDrawing] = useState<boolean>(active);
+
+  const recordCurveArrowAction = useCallback(
+    (curvePoints: Point[]) => {
+      if (createAction && addAction && curvePoints.length > 1) {
+        const action = createAction("drawing", "DRAW_CURVE_ARROW", {
+          points: curvePoints,
+          color: currentColor,
+          strokeWidth: brushSize,
+          strokeStyle,
+          isEraser: false,
+        });
+        addAction(action);
+        console.log("Curve-arrow action recorded:", action);
+      }
+    },
+    [createAction, addAction, currentColor, brushSize, strokeStyle]
+  );
 
   const drawArrow = (
     ctx: CanvasRenderingContext2D,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DrawingTool } from "./ImageEditorModal";
 
 interface Point {
@@ -14,6 +14,12 @@ interface CurveToolProps {
   onFinishCurve?: (curve: Point[]) => void;
   strokeStyle: string;
   brushSize: number;
+  createAction?: (
+    target: "drawing" | "konva" | "base",
+    type: string,
+    payload: any
+  ) => void;
+  addAction?: (action: any) => void;
 }
 
 export const CurveTool: React.FC<CurveToolProps> = ({
@@ -24,6 +30,8 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   currentColor,
   strokeStyle,
   brushSize,
+  createAction,
+  addAction,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -33,6 +41,16 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
   const [drawing, setDrawing] = useState<boolean>(active);
+  const [curveId, setCurveId] = useState<string>("");
+
+  useEffect(() => {
+    if (active && !curveId) {
+      // Generate unique ID for this curve session
+      setCurveId(
+        `curve_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      );
+    }
+  }, [active, curveId]);
 
   const draw = () => {
     const canvas = canvasRef.current;
@@ -131,7 +149,22 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     const pos = getMousePos(e);
 
     if (drawing) {
-      setCurrentCurve((prev) => [...prev, pos]);
+      const newCurve = [...currentCurve, pos];
+      setCurrentCurve(newCurve);
+
+      if (createAction && addAction) {
+        const action = createAction("drawing", "CURVE_ADD_POINT", {
+          points: newCurve,
+          color: currentColor,
+          strokeWidth: brushSize,
+          strokeStyle,
+          isEraser: false,
+          isPartialCurve: true,
+          curveId: curveId,
+        });
+        addAction(action);
+      }
+
       return;
     }
 
@@ -155,8 +188,22 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     }
 
     // Start new curve if not hitting any existing curve
+    const newCurve = [pos];
     setCurrentCurve([pos]);
     setDrawing(true);
+
+    if (createAction && addAction) {
+      const action = createAction("drawing", "CURVE_ADD_POINT", {
+        points: newCurve,
+        color: currentColor,
+        strokeWidth: brushSize,
+        strokeStyle,
+        isEraser: false,
+        isPartialCurve: true,
+        curveId: curveId,
+      });
+      addAction(action);
+    }
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -182,6 +229,19 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && drawing && currentCurve.length > 1) {
       // Clear the canvas first to remove everything
+      if (createAction && addAction) {
+        const action = createAction("drawing", "DRAW_CURVE", {
+          points: currentCurve,
+          color: currentColor,
+          strokeWidth: brushSize,
+          strokeStyle,
+          isEraser: false,
+          isPartialCurve: false,
+          curveId: curveId,
+        });
+        addAction(action);
+      }
+
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext("2d");
@@ -197,6 +257,8 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       setDrawing(false);
       setActiveTool(null);
       setSelectedCurveIndex(null);
+
+      setCurveId(""); // Reset curve ID for next drawing session
 
       // Redraw all curves without showing any points
       const allCurves = [...curves, currentCurve];

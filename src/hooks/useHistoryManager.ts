@@ -220,21 +220,43 @@ export const useHistoryManager = ({
       redoStack: [actionToUndo, ...prevState.redoStack],
     }));
 
-    console.log("Undoing action:", actionToUndo.type);
+    console.log("Undoing action:", actionToUndo.type, actionToUndo.payload);
 
     switch (actionToUndo.target) {
       case "drawing":
         // For drawing actions, we need to replay all remaining drawing actions
-        if (replayManager.current) {
-          const remainingDrawingActions = historyState.actions
-            .slice(0, historyState.currentStep)
-            .filter((action) => action.target === "drawing") as DrawingAction[];
+        if (
+          actionToUndo.type === "CURVE_ADD_POINT" ||
+          actionToUndo.type === "CURVE_ARROW_ADD_POINT"
+        ) {
+          // For partial curves, we need to replay all remaining actions
+          // This will show the curve with one less point
+          if (replayManager.current) {
+            const remainingDrawingActions = historyState.actions
+              .slice(0, historyState.currentStep)
+              .filter(
+                (action) => action.target === "drawing"
+              ) as DrawingAction[];
 
-          // Clear drawing canvas and replay remaining drawing actions
-          replayManager.current.clearDrawingCanvas();
-          remainingDrawingActions.forEach((action) => {
-            replayManager.current!.applyDrawingAction(action);
-          });
+            replayManager.current.clearDrawingCanvas();
+            remainingDrawingActions.forEach((action) => {
+              replayManager.current!.applyDrawingAction(action);
+            });
+          }
+        } else {
+          // Handle other drawing actions normally
+          if (replayManager.current) {
+            const remainingDrawingActions = historyState.actions
+              .slice(0, historyState.currentStep)
+              .filter(
+                (action) => action.target === "drawing"
+              ) as DrawingAction[];
+
+            replayManager.current.clearDrawingCanvas();
+            remainingDrawingActions.forEach((action) => {
+              replayManager.current!.applyDrawingAction(action);
+            });
+          }
         }
         break;
       case "base":

@@ -42,7 +42,7 @@ export class CanvasReplayManager {
   }
 
   applyDrawingAction(action: DrawingAction): void {
-    const ctx = this.baseCanvasRef.current?.getContext("2d");
+    const ctx = this.drawingCanvasRef.current?.getContext("2d");
     if (!ctx) return;
 
     const {
@@ -51,9 +51,9 @@ export class CanvasReplayManager {
       strokeWidth,
       strokeStyle,
       isEraser,
-      shape,
       startPoint,
       endPoint,
+      isPartialCurve,
     } = action.payload;
 
     ctx.save();
@@ -83,9 +83,26 @@ export class CanvasReplayManager {
         this.drawLine(ctx, startPoint!, endPoint!);
         break;
 
+      case "CURVE_ADD_POINT":
+        // case "CURVE_ARROW_ADD_POINT":
+        // ✅ Draw partial curve (in progress)
+        this.drawPartialCurve(
+          ctx,
+          points,
+          action.type.includes("ARROW"),
+          color
+        );
+        break;
+
+      // case "CURVE_FINALIZE":
+      // case "CURVE_ARROW_FINALIZE":
+      //   // ✅ Draw final curve
+      //   this.drawCurve(ctx, points, action, color);
+      //   break;
+
       case "DRAW_CURVE":
       case "DRAW_CURVE_ARROW":
-        this.drawPath(ctx, points);
+        this.drawCurve(ctx, points, action, color);
         break;
     }
 
@@ -161,49 +178,78 @@ export class CanvasReplayManager {
     ctx.stroke();
   }
 
-  // private drawCurve(ctx: CanvasRenderingContext2D, points: Point[]): void {
-  //   if (points.length < 3) return;
+  private drawCurve(
+    ctx: CanvasRenderingContext2D,
+    points: Point[],
+    action: DrawingAction,
+    color?: string
+  ): void {
+    if (points.length < 2) return;
 
-  //   ctx.beginPath();
-  //   ctx.moveTo(points[0].x, points[0].y);
-  //   for (let i = 1; i < points.length - 1; i++) {
-  //     const midPoint = {
-  //       x: (points[i].x + points[i + 1].x) / 2,
-  //       y: (points[i].y + points[i + 1].y) / 2,
-  //     };
-  //     ctx.quadraticCurveTo(points[i].x, points[i].y, midPoint.x, midPoint.y);
-  //   }
-  //   ctx.stroke();
-  // }
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
 
-  // private drawDoubleCurve(
-  //   ctx: CanvasRenderingContext2D,
-  //   points: Point[]
-  // ): void {
-  //   if (points.length < 4) return;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i - 1] || points[i];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] || p2;
 
-  //   ctx.beginPath();
-  //   ctx.moveTo(points[0].x, points[0].y);
-  //   for (let i = 1; i < points.length - 2; i += 2) {
-  //     const midPoint1 = {
-  //       x: (points[i].x + points[i + 1].x) / 2,
-  //       y: (points[i].y + points[i + 1].y) / 2,
-  //     };
-  //     const midPoint2 = {
-  //       x: (points[i + 1].x + points[i + 2].x) / 2,
-  //       y: (points[i + 1].y + points[i + 2].y) / 2,
-  //     };
-  //     ctx.bezierCurveTo(
-  //       points[i].x,
-  //       points[i].y,
-  //       midPoint1.x,
-  //       midPoint1.y,
-  //       midPoint2.x,
-  //       midPoint2.y
-  //     );
-  //   }
-  //   ctx.stroke();
-  // }
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+    }
+
+    ctx.stroke();
+  }
+
+  private drawPartialCurve(
+    ctx: CanvasRenderingContext2D,
+    points: Point[],
+    isArrow: boolean,
+    color?: string
+  ): void {
+    if (points.length < 1) return;
+
+    if (points.length === 1) {
+      // Draw single point
+      ctx.beginPath();
+      ctx.arc(points[0].x, points[0].y, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = color || "#000000";
+      ctx.fill();
+    } else {
+      // ✅ Use the same curve drawing logic as your CurveTool
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[i - 1] || points[i];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[i + 2] || p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+
+      ctx.stroke();
+
+      // Show control points for partial curves (like your CurveTool does)
+      // points.forEach((pt) => {
+      //   ctx.beginPath();
+      //   ctx.arc(pt.x, pt.y, 5, 0, 2 * Math.PI);
+      //   ctx.fillStyle = color || "#000000";
+      //   ctx.fill();
+      // });
+    }
+  }
 
   private applyBlackAndWhiteFilter(ctx: CanvasRenderingContext2D): void {
     const imageData = ctx.getImageData(

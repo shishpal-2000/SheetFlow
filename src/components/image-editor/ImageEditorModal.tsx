@@ -82,6 +82,7 @@ import CurveArrowTool from "./CurveArrowTool";
 import MobileView from "./MobileView";
 import { TbArrowCurveRight } from "react-icons/tb";
 import { useHistoryManager } from "@/hooks/useHistoryManager";
+import { DrawingAction } from "@/types/history";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -157,6 +158,8 @@ export default function ImageEditorModal({
     addAction,
     createAction,
     clearHistory,
+
+    replayManager,
 
     // get konva states from history manager
     rectangles,
@@ -1195,30 +1198,6 @@ export default function ImageEditorModal({
       setBrushSize(3);
     }
 
-    // // If leaving rectangle tool, flatten rectangles before switching
-    // if (activeTool === "rectangle" && konvaRectRef.current) {
-    //   konvaRectRef.current.flatten();
-    // }
-
-    // // If leaving circle tool, flatten circles before switching
-    // if (activeTool === "circle" && konvaCircleRef.current) {
-    //   konvaCircleRef.current.flatten();
-    // }
-
-    // // If leaving arrow tool, flatten arrows before switching
-    // if (activeTool === "arrow" && konvaArrowRef.current) {
-    //   konvaArrowRef.current.flatten();
-    // }
-
-    // // If leaving double-arrow tool, flatten double arrows before switching
-    // if (activeTool === "double-arrow" && konvaDoubleArrowRef.current) {
-    //   konvaDoubleArrowRef.current.flatten();
-    // }
-
-    // if (activeTool === "text" && textEditorRef.current) {
-    //   textEditorRef.current.flatten();
-    // }
-
     // Clean up crop tool state
     if (tool === "crop") {
       setCropArea(null);
@@ -1489,39 +1468,104 @@ export default function ImageEditorModal({
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.stroke();
-    } else {
-      // Shape drawing - restore last state and draw new shape
-      // const lastHistoryState = history[historyStep];
-      // if (lastHistoryState) {
-      //   ctx.putImageData(lastHistoryState, 0, 0);
-      // } else {
-      //   ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-      // }
+    }
 
-      ctx.save();
-      ctx.globalCompositeOperation = "source-over";
+    if (
+      activeTool &&
+      ["line", "curve", "curve-arrow"].includes(activeTool) &&
+      startPoint
+    ) {
+      // Clear and redraw with preview
       ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
-      // drawShape(ctx, "line", startPoint!, currentPos);
+      // Replay all existing drawing actions first
+      if (replayManager) {
+        const existingActions = historyState.actions.filter(
+          (action) => action.target === "drawing"
+        ) as DrawingAction[];
+        existingActions.forEach((action) => {
+          replayManager!.applyDrawingAction(action);
+        });
+      }
 
-      if (activeTool === "rectangle") {
-        drawShape(ctx, "rectangle", startPoint!, currentPos);
-      } else if (activeTool === "circle") {
-        drawShape(ctx, "circle", startPoint!, currentPos);
-      } else if (activeTool === "line") {
-        drawShape(ctx, "line", startPoint!, currentPos);
-      } else if (activeTool === "arrow" || activeTool === "double-arrow") {
-        ctx.strokeStyle = currentColor;
-        configureStrokeStyle(ctx);
-        drawArrow(
-          ctx,
-          startPoint!.x,
-          startPoint!.y,
+      // Draw preview
+      ctx.save();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      // Apply stroke style
+      switch (strokeStyle) {
+        case "dashed":
+          ctx.setLineDash([brushSize * 3, brushSize * 2]);
+          break;
+        case "dotted":
+          ctx.setLineDash([brushSize, brushSize]);
+          break;
+        default:
+          ctx.setLineDash([]);
+      }
+
+      if (activeTool === "line") {
+        ctx.beginPath();
+        ctx.moveTo(startPoint.x, startPoint.y);
+        ctx.lineTo(currentPos.x, currentPos.y);
+        ctx.stroke();
+      } else if (activeTool === "curve") {
+        // Use the middle point between start and current as control point
+        const midPoint = {
+          x: (startPoint.x + currentPos.x) / 2,
+          y: startPoint.y - 50, // Offset for curve effect
+        };
+
+        ctx.beginPath();
+        ctx.moveTo(startPoint.x, startPoint.y);
+        ctx.quadraticCurveTo(
+          midPoint.x,
+          midPoint.y,
           currentPos.x,
-          currentPos.y,
-          activeTool === "double-arrow"
+          currentPos.y
         );
-        ctx.setLineDash([]);
+        ctx.stroke();
+      } else if (activeTool === "curve-arrow") {
+        // Draw curve
+        const midPoint = {
+          x: (startPoint.x + currentPos.x) / 2,
+          y: startPoint.y - 50,
+        };
+
+        ctx.beginPath();
+        ctx.moveTo(startPoint.x, startPoint.y);
+        ctx.quadraticCurveTo(
+          midPoint.x,
+          midPoint.y,
+          currentPos.x,
+          currentPos.y
+        );
+        ctx.stroke();
+
+        // Draw arrow head
+        const headlen = 15;
+        const angle = Math.atan2(
+          currentPos.y - midPoint.y,
+          currentPos.x - midPoint.x
+        );
+
+        ctx.beginPath();
+        ctx.moveTo(currentPos.x, currentPos.y);
+        ctx.lineTo(
+          currentPos.x - headlen * Math.cos(angle - Math.PI / 7),
+          currentPos.y - headlen * Math.sin(angle - Math.PI / 7)
+        );
+        ctx.lineTo(
+          currentPos.x - headlen * Math.cos(angle + Math.PI / 7),
+          currentPos.y - headlen * Math.sin(angle + Math.PI / 7)
+        );
+        ctx.lineTo(currentPos.x, currentPos.y);
+        ctx.fillStyle = currentColor;
+        ctx.fill();
       }
 
       ctx.restore();
@@ -1573,32 +1617,28 @@ export default function ImageEditorModal({
           );
           addAction(action);
         }
+      } else if (activeTool && ["curve", "curve-arrow"].includes(activeTool)) {
+        // ✅ FIX: For curve tools, don't record action on every mouse up
+        // The CurveTool and CurveArrowTool components should handle their own action recording
+        // when the curve is completed (double-click or finish)
+
+        // Don't record action here - let the curve tool components handle it
+        console.log(
+          "Curve tool mouse up - letting tool component handle action recording"
+        );
       } else if (activeTool && startPoint) {
-        // Record shape actions
+        // Handle other tools (line, etc.)
         const endPoint = currentStroke[currentStroke.length - 1] || startPoint;
-        let actionType = "DRAW_LINE";
 
-        // switch (activeTool) {
-        //   case "line":
-        //     actionType = "DRAW_LINE";
-        //     break;
-        //   case "curve":
-        //     actionType = "DRAW_CURVE";
-        //     break;
-        //   case "curve-arrow":
-        //     actionType = "DRAW_DOUBLE_CURVE";
-        //     break;
-        // }
-
-        if (actionType) {
-          const action = createAction("drawing", actionType, {
+        if (activeTool === "line") {
+          const action = createAction("drawing", "DRAW_LINE", {
             points: [startPoint, endPoint],
             color: currentColor,
             strokeWidth: brushSize,
             strokeStyle,
             startPoint,
             endPoint,
-            shape: activeTool,
+            isEraser: false,
           });
           addAction(action);
         }
@@ -2595,6 +2635,8 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
+                  createAction={createAction}
+                  addAction={addAction}
                 />
               )}
 
@@ -2606,6 +2648,8 @@ export default function ImageEditorModal({
                   setActiveTool={setActiveTool}
                   strokeStyle={strokeStyle}
                   brushSize={brushSize}
+                  createAction={createAction}
+                  addAction={addAction}
                 />
               )}
 

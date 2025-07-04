@@ -33,6 +33,8 @@ export class ActionCreators {
         shape,
         startPoint,
         endPoint,
+        isPartialCurve: true,
+        curveId: "", // Optional, can be set later if needed
       },
     };
   }
