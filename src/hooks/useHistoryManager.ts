@@ -69,14 +69,6 @@ export const useHistoryManager = ({
     );
   }
 
-  const konvaStateUpdaters = {
-    setRectangles,
-    setCircles,
-    setArrows,
-    setDoubleArrows,
-    setTexts,
-  };
-
   // Action creator
   const createAction = useCallback(
     (
@@ -131,106 +123,6 @@ export const useHistoryManager = ({
     [replayManager]
   );
 
-  // const applyKonvaAction = useCallback((action: KonvaAction) => {
-  //   const { elementType, elementId, data } = action.payload;
-
-  //   switch (action.type) {
-  //     case "ADD_RECTANGLE":
-  //       setRectangles((prev) => [...prev, data]);
-  //       break;
-  //     case "ADD_CIRCLE":
-  //       setCircles((prev) => [...prev, data]);
-  //       break;
-  //     case "ADD_ARROW":
-  //       setArrows((prev) => [...prev, data]);
-  //       break;
-  //     case "ADD_DOUBLE_ARROW":
-  //       setDoubleArrows((prev) => [...prev, data]);
-  //       break;
-  //     case "ADD_TEXT":
-  //       setTexts((prev) => [...prev, data]);
-  //       break;
-  //     case "MOVE_ELEMENT":
-  //       switch (elementType) {
-  //         case "rectangle":
-  //           setRectangles((prev) =>
-  //             prev.map((r) => (r.id === elementId ? data : r))
-  //           );
-  //           break;
-  //         case "circle":
-  //           setCircles((prev) =>
-  //             prev.map((c) => (c.id === elementId ? data : c))
-  //           );
-  //           break;
-  //         case "arrow":
-  //           setArrows((prev) =>
-  //             prev.map((a) => (a.id === elementId ? data : a))
-  //           );
-  //           break;
-  //         case "double-arrow":
-  //           setDoubleArrows((prev) =>
-  //             prev.map((d) => (d.id === elementId ? data : d))
-  //           );
-  //           break;
-  //         case "text":
-  //           setTexts((prev) =>
-  //             prev.map((t) => (t.id === elementId ? data : t))
-  //           );
-  //           break;
-  //       }
-  //       break;
-  //     case "TRANSFORM_ELEMENT":
-  //       switch (elementType) {
-  //         case "rectangle":
-  //           setRectangles((prev) =>
-  //             prev.map((r) => (r.id === elementId ? data : r))
-  //           );
-  //           break;
-  //         case "circle":
-  //           setCircles((prev) =>
-  //             prev.map((c) => (c.id === elementId ? data : c))
-  //           );
-  //           break;
-  //         case "arrow":
-  //           setArrows((prev) =>
-  //             prev.map((a) => (a.id === elementId ? data : a))
-  //           );
-  //           break;
-  //         case "double-arrow":
-  //           setDoubleArrows((prev) =>
-  //             prev.map((a) => (a.id === elementId ? data : a))
-  //           );
-  //           break;
-  //         case "text":
-  //           setTexts((prev) =>
-  //             prev.map((t) => (t.id === elementId ? data : t))
-  //           );
-  //           break;
-  //       }
-  //       break;
-  //     case "DELETE_ELEMENT":
-  //       switch (elementType) {
-  //         case "rectangle":
-  //           setRectangles((prev) => prev.filter((r) => r.id !== elementId));
-  //           break;
-  //         case "circle":
-  //           setCircles((prev) => prev.filter((c) => c.id !== elementId));
-  //           break;
-  //         case "arrow":
-  //           setArrows((prev) => prev.filter((a) => a.id !== elementId));
-  //           break;
-  //         case "double-arrow":
-  //           setDoubleArrows((prev) => prev.filter((a) => a.id !== elementId));
-  //           break;
-  //         case "text":
-  //           setTexts((prev) => prev.filter((t) => t.id !== elementId));
-  //           break;
-  //       }
-  //       break;
-  //   }
-  // }, []);
-
-  // Undo functionality
   const undo = useCallback(() => {
     if (historyState.currentStep < 0) return;
 
@@ -259,7 +151,13 @@ export const useHistoryManager = ({
         }
         break;
       case "base":
-        // Handle base canvas actions if needed
+        // Handle base canvas actions - filter undo
+        if (actionToUndo.type === "APPLY_FILTER" && replayManager.current) {
+          const baseAction = actionToUndo as BaseCanvasAction;
+          if (baseAction.payload.previousImageData) {
+            replayManager.current.undoBaseAction(baseAction);
+          }
+        }
         break;
       case "konva":
         const konvaAction = actionToUndo as KonvaAction;
@@ -290,7 +188,6 @@ export const useHistoryManager = ({
             );
             break;
           case "MOVE_ELEMENT":
-            // For move actions, restore the previous state
             if (konvaAction.payload.previousData) {
               switch (konvaAction.payload.elementType) {
                 case "rectangle":
@@ -367,8 +264,6 @@ export const useHistoryManager = ({
       redoStack: prevState.redoStack.slice(1),
     }));
 
-    console.log("Redoing action:", actionToRedo.type);
-
     switch (actionToRedo.target) {
       case "drawing":
         if (replayManager.current) {
@@ -378,7 +273,11 @@ export const useHistoryManager = ({
         }
         break;
       case "base":
-        // Handle base canvas actions if needed
+        // Handle base canvas actions - filter redo
+        if (actionToRedo.type === "APPLY_FILTER" && replayManager.current) {
+          const baseAction = actionToRedo as BaseCanvasAction;
+          replayManager.current.applyBaseAction(baseAction);
+        }
         break;
       case "konva":
         const konvaAction = actionToRedo as KonvaAction;

@@ -116,7 +116,13 @@ export class CanvasReplayManager {
     switch (action.type) {
       case "APPLY_FILTER":
         if (action.payload.filterType === "blackAndWhite") {
-          this.applyBlackAndWhiteFilter(ctx);
+          // For redo, apply the new filtered image data
+          if (action.payload.newImageData) {
+            ctx.putImageData(action.payload.newImageData, 0, 0);
+          } else {
+            // Fallback to applying filter directly
+            this.applyBlackAndWhiteFilter(ctx);
+          }
         }
         break;
       case "CROP_IMAGE":
@@ -132,6 +138,27 @@ export class CanvasReplayManager {
       case "FLATTEN_LAYERS":
         // This would be handled by the main component
         break;
+    }
+  }
+
+  undoBaseAction(action: BaseCanvasAction): void {
+    const ctx = this.baseCanvasRef.current?.getContext("2d");
+    if (!ctx) return;
+
+    switch (action.type) {
+      case "APPLY_FILTER":
+        // Restore the previous image data before the filter was applied
+        if (action.payload.previousImageData) {
+          ctx.putImageData(action.payload.previousImageData, 0, 0);
+        }
+        break;
+      case "CROP_IMAGE":
+        // For crop undo, restore the original image data
+        if (action.payload.imageData) {
+          ctx.putImageData(action.payload.imageData, 0, 0);
+        }
+        break;
+      // Add other undo cases as needed
     }
   }
 

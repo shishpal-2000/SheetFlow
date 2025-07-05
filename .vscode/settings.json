@@ -2,10 +2,12 @@
     "IDX.aI.enableInlineCompletion": true,
     "IDX.aI.enableCodebaseIndexing": true,
     "github.copilot.enable": {
-        "*": true,
-        "yaml": true,
+        "*": false,
         "plaintext": true,
-        "markdown": true
+        "markdown": true,
+        "scminput": false,
+        "yaml": true,
+        "typescriptreact": true
     },
     "github.copilot.advanced": {
         "debug.overrideEngine": "copilot-codex"

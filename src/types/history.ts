@@ -65,6 +65,8 @@ export interface BaseCanvasAction extends BaseAction {
       height: number;
     };
     imageData?: ImageData;
+    previousImageData?: ImageData; // For filter undo
+    newImageData?: ImageData; // For filter redo
     canvasWidth?: number;
     canvasHeight?: number;
     shapes?: any[]; // For flattening

@@ -219,8 +219,16 @@ export class ActionCreators {
     return this.createBaseAction("CROP_IMAGE", { cropArea, imageData });
   }
 
-  static applyFilter(filterType: "blackAndWhite"): BaseCanvasAction {
-    return this.createBaseAction("APPLY_FILTER", { filterType });
+  static applyFilter(
+    filterType: "blackAndWhite",
+    previousImageData: ImageData,
+    newImageData: ImageData
+  ): BaseCanvasAction {
+    return this.createBaseAction("APPLY_FILTER", {
+      filterType,
+      previousImageData,
+      newImageData,
+    });
   }
 }
 

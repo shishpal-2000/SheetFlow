@@ -77,6 +77,7 @@ import MobileView from "./MobileView";
 import { TbArrowCurveRight } from "react-icons/tb";
 import { useHistoryManager } from "@/hooks/useHistoryManager";
 import { DrawingAction } from "@/types/history";
+import { ActionCreators } from "@/utils/actionCreators";
 import { set } from "date-fns";
 
 interface ImageEditorModalProps {
@@ -1097,24 +1098,23 @@ export default function ImageEditorModal({
     const ctx = baseCanvas?.getContext("2d");
     if (!baseCanvas || !ctx) return;
 
-    // save current state before applying filter
-    // saveHistory();
-
-    // Get image data
-    const imageData = ctx.getImageData(
+    // Store the current image data before applying filter (for undo)
+    const previousImageData = ctx.getImageData(
       0,
       0,
       baseCanvas.width,
       baseCanvas.height
     );
-    const data = imageData.data;
 
-    const action = createAction("base", "APPLY_FILTER", {
-      filterType: "black-and-white",
-    });
-    addAction(action);
+    // Create a copy for applying the filter
+    const newImageData = ctx.createImageData(
+      baseCanvas.width,
+      baseCanvas.height
+    );
+    newImageData.data.set(previousImageData.data);
 
     // Convert to grayscale
+    const data = newImageData.data;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
@@ -1128,9 +1128,16 @@ export default function ImageEditorModal({
       // data[i + 3] is alpha, leave it unchanged
     }
 
-    // Put the modified image data back
-    ctx.putImageData(imageData, 0, 0);
-    // saveHistory();
+    // Apply the filter to the canvas
+    ctx.putImageData(newImageData, 0, 0);
+
+    // Create action for history with before and after states
+    const action = ActionCreators.applyFilter(
+      "blackAndWhite",
+      previousImageData,
+      newImageData
+    );
+    addAction(action);
   };
 
   const hasDrawingCanvasContent = useCallback(() => {
@@ -1712,7 +1719,6 @@ export default function ImageEditorModal({
 
   const applyCrop = useCallback(() => {
     if (!cropArea || !baseCanvasRef.current) return;
-
     const baseCanvas = baseCanvasRef.current;
     const drawingCanvas = drawingCanvasRef.current;
     const baseCtx = baseCanvas.getContext("2d");

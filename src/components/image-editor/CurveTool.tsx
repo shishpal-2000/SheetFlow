@@ -47,7 +47,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
   );
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
-  const [drawing, setDrawing] = useState<boolean>(false); // Start as false, only true when actually drawing
+  const [drawing, setDrawing] = useState<boolean>(false);
   const [curveId, setCurveId] = useState<string>("");
 
   useEffect(() => {
