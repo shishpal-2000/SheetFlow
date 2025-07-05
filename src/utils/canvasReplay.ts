@@ -204,6 +204,54 @@ export class CanvasReplayManager {
     }
 
     ctx.stroke();
+
+    // If this is a curve arrow, draw arrows at both ends
+    if (action.type === "DRAW_CURVE_ARROW" && points.length >= 2) {
+      this.drawArrow(
+        ctx,
+        points[Math.max(0, points.length - 2)],
+        points[points.length - 1],
+        action.payload.strokeWidth
+      );
+      this.drawArrow(ctx, points[1], points[0], action.payload.strokeWidth);
+    }
+  }
+
+  private drawArrow(
+    ctx: CanvasRenderingContext2D,
+    from: Point,
+    to: Point,
+    size: number
+  ): void {
+    const headLength = Math.max(10, size * 2);
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+
+    // Calculate the actual end point considering the brush size
+    const endX = to.x - Math.cos(angle) * (size / 2);
+    const endY = to.y - Math.sin(angle) * (size / 2);
+
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // Draw arrow head
+    ctx.beginPath();
+    // First line of the arrow head
+    ctx.moveTo(
+      endX - headLength * Math.cos(angle - Math.PI / 6),
+      endY - headLength * Math.sin(angle - Math.PI / 6)
+    );
+    ctx.lineTo(endX, endY);
+    // Second line of the arrow head
+    ctx.lineTo(
+      endX - headLength * Math.cos(angle + Math.PI / 6),
+      endY - headLength * Math.sin(angle + Math.PI / 6)
+    );
+
+    // Set the line width for the arrow head (slightly thicker for better visibility)
+    ctx.lineWidth = Math.max(1, size * 0.8);
+    ctx.stroke();
+    ctx.restore();
   }
 
   private drawPartialCurve(

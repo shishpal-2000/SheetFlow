@@ -77,6 +77,7 @@ import MobileView from "./MobileView";
 import { TbArrowCurveRight } from "react-icons/tb";
 import { useHistoryManager } from "@/hooks/useHistoryManager";
 import { DrawingAction } from "@/types/history";
+import { set } from "date-fns";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -297,6 +298,96 @@ export default function ImageEditorModal({
         elementType: "rectangle",
         elementId: rectangle.id,
         data: { ...rectangle, _createdAt: Date.now() },
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaRectMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording rectangle move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "rectangle",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaCircleMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording circle move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "circle",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaArrowMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording arrow move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "arrow",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaDoubleArrowMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording double arrow move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "double-arrow",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
+      });
+      addAction(action);
+    },
+    [createAction, addAction]
+  );
+
+  const handleKonvaTextMove = useCallback(
+    (id: string, newData: any, previousData: any) => {
+      console.log("Recording text move action:", {
+        id,
+        newData,
+        previousData,
+      });
+      const action = createAction("konva", "MOVE_ELEMENT", {
+        elementType: "text",
+        elementId: id,
+        data: newData,
+        previousData: previousData,
       });
       addAction(action);
     },
@@ -1244,102 +1335,102 @@ export default function ImageEditorModal({
     };
   };
 
-  const drawArrow = (
-    ctx: CanvasRenderingContext2D,
-    fromX: number,
-    fromY: number,
-    toX: number,
-    toY: number,
-    isDouble: boolean
-  ) => {
-    const headlen = brushSize * 5; // length of arrow head relative to brush size
-    const angle = Math.atan2(toY - fromY, toX - fromX);
+  // const drawArrow = (
+  //   ctx: CanvasRenderingContext2D,
+  //   fromX: number,
+  //   fromY: number,
+  //   toX: number,
+  //   toY: number,
+  //   isDouble: boolean
+  // ) => {
+  //   const headlen = brushSize * 5; // length of arrow head relative to brush size
+  //   const angle = Math.atan2(toY - fromY, toX - fromX);
 
-    // Draw the main line
-    ctx.beginPath();
-    ctx.moveTo(fromX, fromY);
-    ctx.lineTo(toX, toY);
-    ctx.strokeStyle = currentColor;
-    ctx.lineWidth = brushSize;
-    ctx.stroke();
+  //   // Draw the main line
+  //   ctx.beginPath();
+  //   ctx.moveTo(fromX, fromY);
+  //   ctx.lineTo(toX, toY);
+  //   ctx.strokeStyle = currentColor;
+  //   ctx.lineWidth = brushSize;
+  //   ctx.stroke();
 
-    // Draw the arrow head at the end
-    ctx.beginPath();
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(
-      toX - headlen * Math.cos(angle - Math.PI / 6),
-      toY - headlen * Math.sin(angle - Math.PI / 6)
-    );
-    ctx.moveTo(toX, toY);
-    ctx.lineTo(
-      toX - headlen * Math.cos(angle + Math.PI / 6),
-      toY - headlen * Math.sin(angle + Math.PI / 6)
-    );
-    ctx.stroke();
+  //   // Draw the arrow head at the end
+  //   ctx.beginPath();
+  //   ctx.moveTo(toX, toY);
+  //   ctx.lineTo(
+  //     toX - headlen * Math.cos(angle - Math.PI / 6),
+  //     toY - headlen * Math.sin(angle - Math.PI / 6)
+  //   );
+  //   ctx.moveTo(toX, toY);
+  //   ctx.lineTo(
+  //     toX - headlen * Math.cos(angle + Math.PI / 6),
+  //     toY - headlen * Math.sin(angle + Math.PI / 6)
+  //   );
+  //   ctx.stroke();
 
-    // Draw the arrow head at the start if double-headed
-    if (isDouble) {
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(
-        fromX + headlen * Math.cos(angle - Math.PI / 6),
-        fromY + headlen * Math.sin(angle - Math.PI / 6)
-      );
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(
-        fromX + headlen * Math.cos(angle + Math.PI / 6),
-        fromY + headlen * Math.sin(angle + Math.PI / 6)
-      );
-      ctx.stroke();
-    }
-  };
+  //   // Draw the arrow head at the start if double-headed
+  //   if (isDouble) {
+  //     ctx.beginPath();
+  //     ctx.moveTo(fromX, fromY);
+  //     ctx.lineTo(
+  //       fromX + headlen * Math.cos(angle - Math.PI / 6),
+  //       fromY + headlen * Math.sin(angle - Math.PI / 6)
+  //     );
+  //     ctx.moveTo(fromX, fromY);
+  //     ctx.lineTo(
+  //       fromX + headlen * Math.cos(angle + Math.PI / 6),
+  //       fromY + headlen * Math.sin(angle + Math.PI / 6)
+  //     );
+  //     ctx.stroke();
+  //   }
+  // };
 
-  const configureStrokeStyle = (ctx: CanvasRenderingContext2D) => {
-    switch (strokeStyle) {
-      case "solid":
-        ctx.setLineDash([]);
-        ctx.lineWidth = brushSize;
-        break;
-      case "dashed":
-        ctx.setLineDash([brushSize * 3, brushSize * 2]);
-        ctx.lineWidth = brushSize;
-        break;
-      case "dotted":
-        ctx.setLineDash([brushSize, brushSize]);
-        ctx.lineWidth = brushSize;
-        break;
-    }
-  };
+  // const configureStrokeStyle = (ctx: CanvasRenderingContext2D) => {
+  //   switch (strokeStyle) {
+  //     case "solid":
+  //       ctx.setLineDash([]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //     case "dashed":
+  //       ctx.setLineDash([brushSize * 3, brushSize * 2]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //     case "dotted":
+  //       ctx.setLineDash([brushSize, brushSize]);
+  //       ctx.lineWidth = brushSize;
+  //       break;
+  //   }
+  // };
 
-  const drawShape = (
-    ctx: CanvasRenderingContext2D,
-    shape: "line" | "rectangle" | "circle",
-    start: { x: number; y: number },
-    end: { x: number; y: number }
-  ) => {
-    ctx.beginPath();
-    ctx.strokeStyle = currentColor;
-    configureStrokeStyle(ctx);
+  // const drawShape = (
+  //   ctx: CanvasRenderingContext2D,
+  //   shape: "line" | "rectangle" | "circle",
+  //   start: { x: number; y: number },
+  //   end: { x: number; y: number }
+  // ) => {
+  //   ctx.beginPath();
+  //   ctx.strokeStyle = currentColor;
+  //   configureStrokeStyle(ctx);
 
-    if (shape === "line") {
-      ctx.moveTo(start.x, start.y);
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
-    } else if (shape === "rectangle") {
-      ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
-    } else if (shape === "circle") {
-      const radius = Math.sqrt(
-        Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
-      );
+  //   if (shape === "line") {
+  //     ctx.moveTo(start.x, start.y);
+  //     ctx.lineTo(end.x, end.y);
+  //     ctx.stroke();
+  //   } else if (shape === "rectangle") {
+  //     ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
+  //   } else if (shape === "circle") {
+  //     const radius = Math.sqrt(
+  //       Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
+  //     );
 
-      ctx.beginPath();
-      ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-      ctx.stroke();
-    }
+  //     ctx.beginPath();
+  //     ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
+  //     ctx.stroke();
+  //   }
 
-    // Reset line dash to default
-    ctx.setLineDash([]);
-  };
+  //   // Reset line dash to default
+  //   ctx.setLineDash([]);
+  // };
 
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -1349,6 +1440,11 @@ export default function ImageEditorModal({
 
     if (activeTool === "text") {
       setTextInputPosition(pos);
+      return;
+    }
+
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
       return;
     }
 
@@ -1399,6 +1495,11 @@ export default function ImageEditorModal({
 
     if (activeTool === "text" || !isDrawing) return;
 
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
+      return;
+    }
+
     const drawingCanvas = drawingCanvasRef.current;
     const ctx = drawingCanvas?.getContext("2d");
     if (!drawingCanvas || !ctx) return;
@@ -1441,21 +1542,17 @@ export default function ImageEditorModal({
       ctx.stroke();
     }
 
-    if (
-      activeTool &&
-      ["line", "curve", "curve-arrow"].includes(activeTool) &&
-      startPoint
-    ) {
+    if (activeTool && ["line"].includes(activeTool) && startPoint) {
       // Clear and redraw with preview
       ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
 
       // Replay all existing drawing actions first
-      if (replayManager) {
+      if (replayManager?.current) {
         const existingActions = historyState.actions.filter(
           (action) => action.target === "drawing"
         ) as DrawingAction[];
         existingActions.forEach((action) => {
-          replayManager!.applyDrawingAction(action);
+          replayManager.current!.applyDrawingAction(action);
         });
       }
 
@@ -1484,59 +1581,6 @@ export default function ImageEditorModal({
         ctx.moveTo(startPoint.x, startPoint.y);
         ctx.lineTo(currentPos.x, currentPos.y);
         ctx.stroke();
-      } else if (activeTool === "curve") {
-        // Use the middle point between start and current as control point
-        const midPoint = {
-          x: (startPoint.x + currentPos.x) / 2,
-          y: startPoint.y - 50, // Offset for curve effect
-        };
-
-        ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.quadraticCurveTo(
-          midPoint.x,
-          midPoint.y,
-          currentPos.x,
-          currentPos.y
-        );
-        ctx.stroke();
-      } else if (activeTool === "curve-arrow") {
-        // Draw curve
-        const midPoint = {
-          x: (startPoint.x + currentPos.x) / 2,
-          y: startPoint.y - 50,
-        };
-
-        ctx.beginPath();
-        ctx.moveTo(startPoint.x, startPoint.y);
-        ctx.quadraticCurveTo(
-          midPoint.x,
-          midPoint.y,
-          currentPos.x,
-          currentPos.y
-        );
-        ctx.stroke();
-
-        // Draw arrow head
-        const headlen = 15;
-        const angle = Math.atan2(
-          currentPos.y - midPoint.y,
-          currentPos.x - midPoint.x
-        );
-
-        ctx.beginPath();
-        ctx.moveTo(currentPos.x, currentPos.y);
-        ctx.lineTo(
-          currentPos.x - headlen * Math.cos(angle - Math.PI / 7),
-          currentPos.y - headlen * Math.sin(angle - Math.PI / 7)
-        );
-        ctx.lineTo(
-          currentPos.x - headlen * Math.cos(angle + Math.PI / 7),
-          currentPos.y - headlen * Math.sin(angle + Math.PI / 7)
-        );
-        ctx.lineTo(currentPos.x, currentPos.y);
-        ctx.fillStyle = currentColor;
-        ctx.fill();
       }
 
       ctx.restore();
@@ -1565,6 +1609,11 @@ export default function ImageEditorModal({
       return;
     }
 
+    // Let curve tools handle their own mouse events
+    if (activeTool === "curve" || activeTool === "curve-arrow") {
+      return;
+    }
+
     if (!isDrawing) return;
     const ctx = drawingCanvasRef.current?.getContext("2d");
 
@@ -1587,16 +1636,10 @@ export default function ImageEditorModal({
             }
           );
           addAction(action);
-        }
-      } else if (activeTool && ["curve", "curve-arrow"].includes(activeTool)) {
-        // ✅ FIX: For curve tools, don't record action on every mouse up
-        // The CurveTool and CurveArrowTool components should handle their own action recording
-        // when the curve is completed (double-click or finish)
 
-        // Don't record action here - let the curve tool components handle it
-        console.log(
-          "Curve tool mouse up - letting tool component handle action recording"
-        );
+          // Clear the canvas after adding action - let history replay handle rendering
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
       } else if (activeTool && startPoint) {
         // Handle other tools (line, etc.)
         const endPoint = currentStroke[currentStroke.length - 1] || startPoint;
@@ -1612,6 +1655,9 @@ export default function ImageEditorModal({
             isEraser: false,
           });
           addAction(action);
+
+          // Clear the canvas after adding action - let history replay handle rendering
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         }
       }
 
@@ -1963,13 +2009,14 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges && activeTool !== "curve") {
-                    setShowCurveConfirm(true);
-                    setShowCropConfirm(false);
-                    setShowCurveArrowConfirm(false);
-                  } else {
-                    setActiveTool("curve");
-                  }
+                  // if (hasChanges && activeTool !== "curve") {
+                  //   setShowCurveConfirm(true);
+                  //   setShowCropConfirm(false);
+                  //   setShowCurveArrowConfirm(false);
+                  // } else {
+                  //   setActiveTool("curve");
+                  // }
+                  setActiveTool("curve");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
@@ -1992,13 +2039,14 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  if (hasChanges && activeTool !== "curve-arrow") {
-                    setShowCurveArrowConfirm(true);
-                    setShowCropConfirm(false);
-                    setShowCurveConfirm(false);
-                  } else {
-                    setActiveTool("curve-arrow");
-                  }
+                  // if (hasChanges && activeTool !== "curve-arrow") {
+                  //   setShowCurveArrowConfirm(true);
+                  //   setShowCropConfirm(false);
+                  //   setShowCurveConfirm(false);
+                  // } else {
+                  //   setActiveTool("curve-arrow");
+                  // }
+                  setActiveTool("curve-arrow");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
               >
@@ -2008,7 +2056,7 @@ export default function ImageEditorModal({
             </div>
 
             {/* Confirmation dialog for crop */}
-            {showCropConfirm && (
+            {/* {showCropConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2043,10 +2091,10 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Confirmation dialog for curve */}
-            {showCurveConfirm && (
+            {/* {showCurveConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2081,9 +2129,9 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
-            {showCurveArrowConfirm && (
+            {/* {showCurveArrowConfirm && (
               <div className="space-y-4 mt-2">
                 <p className="text-[12px] text-muted-foreground">
                   These changes till now will be saved and they cannot be undone
@@ -2118,7 +2166,7 @@ export default function ImageEditorModal({
                   </Button>
                 </div>
               </div>
-            )}
+            )} */}
 
             {/* Tool-specific controls */}
             {activeTool === "crop" && (
@@ -2341,6 +2389,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaRectAdd}
+                      onMove={handleKonvaRectMove}
                       rectangles={rectangles}
                       setRectangles={setRectangles}
                       onFlatten={handleKonvaRectFlatten}
@@ -2369,6 +2418,7 @@ export default function ImageEditorModal({
                       circles={circles}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaCircleAdd}
+                      onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
                       onFlatten={handleKonvaCircleFlatten}
                       onElementSelect={(id, type) => {
@@ -2394,6 +2444,7 @@ export default function ImageEditorModal({
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
+                      onMove={handleKonvaArrowMove}
                       arrows={arrows}
                       setArrows={setArrows} // Use history-aware setter
                       onFlatten={handleKonvaArrowFlatten}
@@ -2421,6 +2472,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
+                      onMove={handleKonvaDoubleArrowMove}
                       setArrows={setDoubleArrows} // Use history-aware setter
                       onFlatten={handleKonvaDoubleArrowFlatten}
                       onElementSelect={(id, type) => {
@@ -2447,6 +2499,7 @@ export default function ImageEditorModal({
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}
+                      onMove={handleKonvaTextMove}
                       texts={texts}
                       setTexts={setTexts}
                       onFlatten={handleTextFlatten}
@@ -2474,6 +2527,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaRectAdd}
+                      onMove={handleKonvaRectMove}
                       rectangles={rectangles}
                       setRectangles={setRectangles}
                       onFlatten={handleKonvaRectFlatten}
@@ -2502,6 +2556,7 @@ export default function ImageEditorModal({
                       circles={circles}
                       backgroundColor={backgroundColor}
                       onAdd={handleKonvaCircleAdd}
+                      onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
                       onFlatten={handleKonvaCircleFlatten}
                       onElementSelect={(id, type) => {
@@ -2527,6 +2582,7 @@ export default function ImageEditorModal({
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
+                      onMove={handleKonvaArrowMove}
                       arrows={arrows}
                       setArrows={setArrows} // Use history-aware setter
                       onFlatten={handleKonvaArrowFlatten}
@@ -2554,6 +2610,7 @@ export default function ImageEditorModal({
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
+                      onMove={handleKonvaDoubleArrowMove}
                       setArrows={setDoubleArrows} // Use history-aware setter
                       onFlatten={handleKonvaDoubleArrowFlatten}
                       onElementSelect={(id, type) => {
@@ -2580,6 +2637,7 @@ export default function ImageEditorModal({
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}
+                      onMove={handleKonvaTextMove}
                       texts={texts}
                       setTexts={setTexts}
                       onFlatten={handleTextFlatten}
@@ -2608,6 +2666,8 @@ export default function ImageEditorModal({
                   brushSize={brushSize}
                   createAction={createAction}
                   addAction={addAction}
+                  replayManager={replayManager}
+                  historyState={historyState}
                 />
               )}
 
@@ -2621,6 +2681,8 @@ export default function ImageEditorModal({
                   brushSize={brushSize}
                   createAction={createAction}
                   addAction={addAction}
+                  replayManager={replayManager}
+                  historyState={historyState}
                 />
               )}
 

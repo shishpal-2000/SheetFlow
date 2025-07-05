@@ -34,6 +34,7 @@ interface KonvaRectangleProps {
   strokeStyle: StrokeStyle;
   backgroundColor?: string;
   onAdd?: (rect: KonvaRectangle) => void;
+  onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   rectangles: any[];
   setRectangles: React.Dispatch<React.SetStateAction<any[]>>;
   onFlatten: (rects: any[]) => void;
@@ -65,6 +66,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       onElementDeselect,
       checkTrashZoneCollision,
       updateTrashZoneState,
+      onMove, // Destructure onMove prop
     },
     ref
   ) => {
@@ -252,6 +254,9 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       const node = e.target;
       const { x, y } = node.position();
 
+      // Get the previous rectangle data before moving
+      const previousRect = rectangles.find((r) => r.id === id);
+
       // Reset trash zone state
       if (updateTrashZoneState) {
         updateTrashZoneState(false);
@@ -281,14 +286,25 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         return;
       }
 
-      // Normal drag behavior
-      setRectangles((rects) =>
-        rects.map((r) => (r.id === id ? { ...r, x, y } : r))
-      );
+      // Normal drag behavior - update position
+      const newRect = { ...previousRect, x, y };
+      setRectangles((rects) => rects.map((r) => (r.id === id ? newRect : r)));
+
+      // Call onMove prop for history tracking if position actually changed
+      if (
+        onMove &&
+        previousRect &&
+        (previousRect.x !== x || previousRect.y !== y)
+      ) {
+        onMove(id, newRect, previousRect);
+      }
     };
 
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
+
+      // Get the previous rectangle data before transforming
+      const previousRect = rectangles.find((r) => r.id === id);
 
       // Extract transformations
       const scaleX = node.scaleX();
@@ -309,21 +325,32 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       node.scaleX(1);
       node.scaleY(1);
 
+      // Create the new rectangle data
+      const newRect = {
+        ...previousRect,
+        x: node.x(),
+        y: node.y(),
+        width: newWidth,
+        height: newHeight,
+        rotation: rotation,
+      };
+
       // Update state with new properties
-      setRectangles((rects) =>
-        rects.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                x: node.x(),
-                y: node.y(),
-                width: newWidth,
-                height: newHeight,
-                rotation: rotation,
-              }
-            : r
-        )
-      );
+      setRectangles((rects) => rects.map((r) => (r.id === id ? newRect : r)));
+
+      // Call onMove prop for history tracking if size or rotation changed
+      if (onMove && previousRect) {
+        const hasChanged =
+          previousRect.width !== newWidth ||
+          previousRect.height !== newHeight ||
+          previousRect.rotation !== rotation ||
+          previousRect.x !== node.x() ||
+          previousRect.y !== node.y();
+
+        if (hasChanged) {
+          onMove(id, newRect, previousRect);
+        }
+      }
     };
 
     return (

@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { DrawingTool } from "./ImageEditorModal";
+import { DrawingTool, StrokeStyle } from "./ImageEditorModal";
+import { ActionCreators } from "@/utils/actionCreators";
+import { DrawingAction, HistoryState } from "@/types/history";
+import { CanvasReplayManager } from "@/utils/canvasReplay";
 
 interface Point {
   x: number;
@@ -12,7 +15,7 @@ interface CurveToolProps {
   currentColor: string;
   setActiveTool: (tool: DrawingTool | null) => void;
   onFinishCurve?: (curve: Point[]) => void;
-  strokeStyle: string;
+  strokeStyle: StrokeStyle;
   brushSize: number;
   createAction?: (
     target: "drawing" | "konva" | "base",
@@ -20,6 +23,8 @@ interface CurveToolProps {
     payload: any
   ) => void;
   addAction?: (action: any) => void;
+  replayManager?: React.MutableRefObject<CanvasReplayManager | null>;
+  historyState?: HistoryState;
 }
 
 const CurveArrowTool: React.FC<CurveToolProps> = ({
@@ -32,6 +37,8 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
   brushSize,
   createAction,
   addAction,
+  replayManager,
+  historyState,
 }) => {
   const [curves, setCurves] = useState<Point[][]>([]);
   const [currentCurve, setCurrentCurve] = useState<Point[]>([]);
@@ -40,24 +47,7 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
   );
   const [dragging, setDragging] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState<Point | null>(null);
-  const [drawing, setDrawing] = useState<boolean>(active);
-
-  const recordCurveArrowAction = useCallback(
-    (curvePoints: Point[]) => {
-      if (createAction && addAction && curvePoints.length > 1) {
-        const action = createAction("drawing", "DRAW_CURVE_ARROW", {
-          points: curvePoints,
-          color: currentColor,
-          strokeWidth: brushSize,
-          strokeStyle,
-          isEraser: false,
-        });
-        addAction(action);
-        console.log("Curve-arrow action recorded:", action);
-      }
-    },
-    [createAction, addAction, currentColor, brushSize, strokeStyle]
-  );
+  const [drawing, setDrawing] = useState<boolean>(false); // Start as false, only true when actually drawing
 
   const drawArrow = (
     ctx: CanvasRenderingContext2D,
@@ -103,14 +93,32 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const allCurves = [...curves];
-    if (drawing && currentCurve.length > 1) {
-      allCurves.push([...currentCurve, ...(mousePos ? [mousePos] : [])]);
+    // When actively drawing, we need to redraw everything to show preview
+    // When editing existing curves, we also need to clear and redraw
+    const needsFullRedraw =
+      (drawing && currentCurve.length > 1) || selectedCurveIndex !== null;
+
+    if (needsFullRedraw) {
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Trigger history replay to redraw all previous content
+      if (replayManager?.current) {
+        // Get all drawing actions from the current history
+        const drawingActions = historyState?.actions?.filter(
+          (a: any) => a.target === "drawing"
+        ) as DrawingAction[];
+
+        // Replay all previous drawing actions
+        drawingActions?.forEach((drawingAction) => {
+          replayManager.current!.applyDrawingAction(drawingAction);
+        });
+      }
     }
 
-    allCurves.forEach((curve, idx) => {
+    // Only draw existing curves if we're editing them
+    curves.forEach((curve, idx) => {
       if (curve.length < 2) return;
 
       ctx.beginPath();
@@ -150,15 +158,12 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
 
       // Draw arrows at both ends if there are at least 2 points
       if (curve.length >= 2) {
-        // Draw arrow at the end
         drawArrow(
           ctx,
           curve[Math.max(0, curve.length - 2)],
           curve[curve.length - 1],
           brushSize
         );
-
-        // Draw arrow at the start (reversed)
         drawArrow(ctx, curve[1], curve[0], brushSize);
       }
 
@@ -173,6 +178,61 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
       }
     });
 
+    // Draw the current curve being created
+    if (drawing && currentCurve.length > 1) {
+      const previewCurve = [...currentCurve, ...(mousePos ? [mousePos] : [])];
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(previewCurve[0].x, previewCurve[0].y);
+
+      for (let i = 0; i < previewCurve.length - 1; i++) {
+        const p0 = previewCurve[i - 1] || previewCurve[i];
+        const p1 = previewCurve[i];
+        const p2 = previewCurve[i + 1];
+        const p3 = previewCurve[i + 2] || p2;
+
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+      }
+
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = brushSize;
+
+      // Apply stroke style
+      switch (strokeStyle) {
+        case "dashed":
+          ctx.setLineDash([brushSize * 3, brushSize * 2]);
+          break;
+        case "dotted":
+          ctx.setLineDash([brushSize, brushSize]);
+          break;
+        default:
+          ctx.setLineDash([]);
+      }
+
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw arrows at both ends for preview
+      if (previewCurve.length >= 2) {
+        drawArrow(
+          ctx,
+          previewCurve[Math.max(0, previewCurve.length - 2)],
+          previewCurve[previewCurve.length - 1],
+          brushSize
+        );
+        drawArrow(ctx, previewCurve[1], previewCurve[0], brushSize);
+      }
+
+      ctx.restore();
+    }
+
+    // Draw preview line to mouse position
     if (drawing && currentCurve.length > 0 && mousePos) {
       const lastPoint = currentCurve[currentCurve.length - 1];
       ctx.beginPath();
@@ -259,30 +319,48 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && drawing && currentCurve.length > 1) {
-      // Add the current curve to the curves array
-      const newCurve = [...currentCurve];
-      setCurves((prev) => [...prev, newCurve]);
+      // Create a DRAW_CURVE_ARROW action using ActionCreators
+      if (addAction) {
+        const action = ActionCreators.drawDoubleCurve(
+          currentCurve,
+          currentColor,
+          brushSize,
+          strokeStyle
+        );
+        addAction(action);
+      }
 
-      // Reset drawing state
+      // Reset drawing state - don't add to local curves array
+      // The history system will handle rendering via replay
       setCurrentCurve([]);
-      setActiveTool(null);
       setMousePos(null);
       setDrawing(false);
+
+      // Don't manually clear the canvas - let the history replay handle it
+      // The replay manager will clear and redraw everything properly
+
+      // Delay tool deactivation to allow history replay to complete
+      setTimeout(() => {
+        setActiveTool(null);
+      }, 50); // Increased delay to ensure replay completes
 
       // Notify parent component if needed
       if (onFinishCurve) {
-        onFinishCurve(newCurve);
+        onFinishCurve(currentCurve);
       }
-
-      // Redraw to ensure arrowheads are shown
-      draw();
     } else if (e.key === "Escape" && drawing) {
       // Cancel current drawing
       setCurrentCurve([]);
-      setActiveTool(null);
       setMousePos(null);
       setDrawing(false);
-      draw();
+
+      // Don't manually clear the canvas - let the history replay handle it
+      // This preserves any existing drawings when canceling
+
+      // Delay tool deactivation slightly
+      setTimeout(() => {
+        setActiveTool(null);
+      }, 50);
     }
   };
 
@@ -295,8 +373,18 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
     mousePos,
   ]);
 
+  // Clean up drawing state when tool becomes inactive
   useEffect(() => {
-    if (!drawing) return;
+    if (!active) {
+      setDrawing(false);
+      setCurrentCurve([]);
+      setMousePos(null);
+      setSelectedCurveIndex(null);
+    }
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return; // Add listeners when tool is active, not when drawing
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -312,7 +400,7 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
       canvas.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [drawing, currentCurve, curves, dragging, selectedCurveIndex]);
+  }, [active, currentCurve, curves, dragging, selectedCurveIndex]); // Change dependency from drawing to active
 
   return null; // purely interactive on canvas, no DOM output
 };
