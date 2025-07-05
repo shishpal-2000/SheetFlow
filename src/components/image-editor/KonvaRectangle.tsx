@@ -30,9 +30,11 @@ interface KonvaRectangleProps {
   height: number;
   active: boolean;
   color: string;
+  setColor: (color: string) => void;
   brushSize: number;
   strokeStyle: StrokeStyle;
   backgroundColor?: string;
+  setBackgroundColor: (color: string) => void;
   onAdd?: (rect: KonvaRectangle) => void;
   onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   rectangles: any[];
@@ -55,9 +57,11 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       height,
       active,
       color,
+      setColor,
       brushSize,
       strokeStyle,
       backgroundColor,
+      setBackgroundColor,
       onAdd,
       rectangles,
       setRectangles,
@@ -225,7 +229,10 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
 
     const handleRectClick = (id: string) => {
       setSelectedId(id);
-      // Notify parent about selection
+      setColor(rectangles.find((r) => r.id === id)?.stroke || "#000000");
+      setBackgroundColor(
+        rectangles.find((r) => r.id === id)?.fill || "transparent"
+      );
       if (onElementSelect) {
         onElementSelect(id, "rectangle");
       }

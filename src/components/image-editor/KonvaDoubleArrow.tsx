@@ -24,6 +24,7 @@ interface KonvaDoubleArrowProps {
   height: number;
   active: boolean;
   color: string;
+  setColor: (color: string) => void;
   brushSize: number;
   strokeStyle: StrokeStyle;
   onAdd?: (arrow: KonvaDoubleArrowShape) => void; // Callback when a new arrow is added
@@ -51,6 +52,7 @@ const KonvaDoubleArrow = forwardRef<
       height,
       active,
       color,
+      setColor,
       brushSize,
       strokeStyle,
       onAdd,
@@ -248,12 +250,13 @@ const KonvaDoubleArrow = forwardRef<
               ? {
                   ...a,
                   stroke: color,
+                  strokeWidth: brushSize,
                 }
               : a
           )
         );
       }
-    }, [color, selectedId]);
+    }, [color, selectedId, brushSize]);
 
     // Single click to start drawing
     const handleStageClick = (e: any) => {
@@ -346,7 +349,7 @@ const KonvaDoubleArrow = forwardRef<
 
     const handleArrowClick = (id: string) => {
       setSelectedId(id);
-
+      setColor(arrows.find((a) => a.id === id)?.stroke || "#000000");
       if (onElementSelect) {
         onElementSelect(id, "double-arrow");
       }

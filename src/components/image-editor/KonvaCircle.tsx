@@ -28,9 +28,11 @@ interface KonvaCircleProps {
   height: number;
   active: boolean;
   color: string;
+  setColor: (color: string) => void;
   brushSize: number;
   strokeStyle: StrokeStyle;
-  backgroundColor?: string; // Optional background color prop
+  backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
   onAdd?: (circle: KonvaCircleShape) => void; // Callback when a new circle is added
   onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   circles: KonvaCircleShape[];
@@ -53,9 +55,11 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       height,
       active,
       color,
+      setColor,
       brushSize,
       strokeStyle,
       backgroundColor,
+      setBackgroundColor,
       onAdd,
       onMove, // Destructure onMove prop
       circles,
@@ -181,6 +185,10 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
 
     const handleCircleClick = (id: string) => {
       setSelectedId(id);
+      setColor(circles.find((c) => c.id === id)?.stroke || "#000000");
+      setBackgroundColor(
+        circles.find((c) => c.id === id)?.fill || "transparent"
+      );
       if (onElementSelect) {
         onElementSelect(id, "circle");
       }
