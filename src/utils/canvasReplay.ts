@@ -85,15 +85,15 @@ export class CanvasReplayManager {
         this.drawLine(ctx, startPoint!, endPoint!);
         break;
 
-      case "CURVE_ADD_POINT":
-        this.applyStrokeStyle(ctx, strokeStyle, strokeWidth);
-        this.drawPartialCurve(
-          ctx,
-          points,
-          action.type.includes("ARROW"),
-          color
-        );
-        break;
+      // case "CURVE_ADD_POINT":
+      //   this.applyStrokeStyle(ctx, strokeStyle, strokeWidth);
+      //   this.drawPartialCurve(
+      //     ctx,
+      //     points,
+      //     action.type.includes("ARROW"),
+      //     color
+      //   );
+      //   break;
 
       // case "CURVE_FINALIZE":
       // case "CURVE_ARROW_FINALIZE":
