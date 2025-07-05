@@ -9,6 +9,7 @@ import React, {
 import { Stage, Layer, Circle, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
 import { getDashPattern } from "@/utils/getStrokePattern";
+import { KONVA_THRESHOLDS } from "@/utils/konvaThreshold";
 
 export interface KonvaCircleShape {
   id: string;
@@ -111,6 +112,13 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
 
+      if (selectedId) {
+        setSelectedId(null);
+        if (onElementDeselect) {
+          onElementDeselect();
+        }
+      }
+
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
 
@@ -160,10 +168,11 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         e.evt.preventDefault();
       }
 
-      setCircles((cs) => [...cs, newCircle]);
-
-      if (onAdd) {
-        if (newCircle.radius > 5) onAdd(newCircle);
+      if (newCircle.radius >= KONVA_THRESHOLDS.MIN_CIRCLE_RADIUS) {
+        setCircles((cs) => [...cs, newCircle]);
+        if (onAdd) {
+          onAdd(newCircle);
+        }
       }
       setNewCircle(null);
     };
@@ -178,11 +187,14 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
       const scaleX = node.scaleX();
-      
-      const newRadius = Math.max(node.radius() * scaleX, 5);
-      
+
+      const newRadius = Math.max(
+        node.radius() * scaleX,
+        KONVA_THRESHOLDS.MIN_CIRCLE_RADIUS
+      );
+
       node.scaleX(1);
-      // node.scaleY(1);
+      node.scaleY(1);
 
       setCircles((cs) =>
         cs.map((c) =>
@@ -288,7 +300,6 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         style={{
           position: "absolute",
           inset: 0,
-
           width: "100%",
           height: "100%",
           zIndex: 30,
@@ -304,7 +315,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         onTouchEnd={handleMouseUp}
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();
@@ -313,7 +324,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         }}
         onTap={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();
@@ -360,13 +371,10 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
               "top-right",
               "bottom-left",
               "bottom-right",
-              "middle-left",
-              "middle-right",
-              "middle-top",
-              "middle-bottom",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}
+            keepRatio={true}
           />
         </Layer>
       </Stage>

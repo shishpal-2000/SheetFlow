@@ -9,6 +9,7 @@ import React, {
 import { Stage, Layer, Arrow, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
 import { getDashPattern } from "@/utils/getStrokePattern";
+import { KONVA_THRESHOLDS } from "@/utils/konvaThreshold";
 
 export interface KonvaDoubleArrowShape {
   id: string;
@@ -264,6 +265,13 @@ const KonvaDoubleArrow = forwardRef<
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
 
+      if (selectedId) {
+        setSelectedId(null);
+        if (onElementDeselect) {
+          onElementDeselect();
+        }
+      }
+
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
 
@@ -309,10 +317,11 @@ const KonvaDoubleArrow = forwardRef<
         Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
       );
 
-      setArrows((arrs) => [...arrs, newArrow]);
-
-      if (onAdd) {
-        if (arrowLength > 10) onAdd(newArrow);
+      if (arrowLength >= KONVA_THRESHOLDS.MIN_DOUBLE_ARROW_LENGTH) {
+        setArrows((arrs) => [...arrs, newArrow]);
+        if (onAdd) {
+          onAdd(newArrow);
+        }
       }
       setNewArrow(null);
     };
@@ -521,7 +530,7 @@ const KonvaDoubleArrow = forwardRef<
         onTouchEnd={handleTouchEnd}
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();
@@ -530,7 +539,7 @@ const KonvaDoubleArrow = forwardRef<
         }}
         onTap={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();

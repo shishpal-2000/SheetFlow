@@ -9,6 +9,7 @@ import React, {
 import { Stage, Layer, Arrow, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
 import { getDashPattern } from "@/utils/getStrokePattern";
+import { KONVA_THRESHOLDS } from "@/utils/konvaThreshold";
 
 export interface KonvaArrow {
   id: string;
@@ -152,6 +153,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               ? {
                   ...a,
                   stroke: color,
+                  strokeWidth: brushSize,
                 }
               : a
           )
@@ -173,6 +175,13 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
 
       const clickedOnEmpty = e.target === e.target.getStage();
       if (!clickedOnEmpty) return;
+
+      if (selectedId) {
+        setSelectedId(null);
+        if (onElementDeselect) {
+          onElementDeselect();
+        }
+      }
 
       const pos = e.target.getStage().getPointerPosition();
       if (!pos) return;
@@ -227,9 +236,11 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
       );
 
-      setArrows((arrs) => [...arrs, newArrow]);
-      if (onAdd) {
-        if (arrowLength > 10) onAdd(newArrow);
+      if (arrowLength >= KONVA_THRESHOLDS.MIN_ARROW_LENGTH) {
+        setArrows((arrs) => [...arrs, newArrow]);
+        if (onAdd) {
+          onAdd(newArrow);
+        }
       }
       setNewArrow(null);
     };
@@ -395,6 +406,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
             ? {
                 ...a,
                 points: constrainedPoints,
+                stroke: color,
+                strokeWidth: brushSize,
               }
             : a
         )
@@ -512,7 +525,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         onTouchEnd={handleTouchEnd} // Use the new touch end handler
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();
@@ -521,7 +534,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         }}
         onTap={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();
-          if (clickedOnEmpty) {
+          if (clickedOnEmpty && selectedId) {
             setSelectedId(null);
             if (onElementDeselect) {
               onElementDeselect();

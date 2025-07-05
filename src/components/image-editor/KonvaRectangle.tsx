@@ -9,6 +9,7 @@ import React, {
 import { Stage, Layer, Rect, Transformer } from "react-konva";
 import { StrokeStyle } from "./ImageEditorModal";
 import { getDashPattern } from "@/utils/getStrokePattern";
+import { KONVA_THRESHOLDS } from "@/utils/konvaThreshold";
 
 export interface KonvaRectangle {
   id: string;
@@ -208,9 +209,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         e.evt.preventDefault();
       }
 
-      setRectangles((rects) => [...rects, newRect]);
-      if (onAdd) {
-        if (newRect.width > 5 && newRect.height > 5) onAdd(newRect);
+      if (
+        newRect.width >= KONVA_THRESHOLDS.MIN_RECT_WIDTH &&
+        newRect.height >= KONVA_THRESHOLDS.MIN_RECT_HEIGHT
+      ) {
+        setRectangles((rects) => [...rects, newRect]);
+        if (onAdd) {
+          onAdd(newRect);
+        }
       }
       setNewRect(null);
     };
@@ -240,46 +246,6 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         updateTrashZoneState(isOverTrash);
       }
     };
-
-    // const handleDragEnd = (e: any, id: string) => {
-    //   const stage = e.target.getStage();
-    //   const node = e.target;
-    //   const { x, y } = node.position();
-
-    //   // Get the stage's position on screen
-    //   const stageContainer = stage.container();
-    //   const stageRect = stageContainer.getBoundingClientRect();
-
-    //   // Convert stage coordinates to screen coordinates
-    //   const screenX = stageRect.left + x;
-    //   const screenY = stageRect.top + y;
-
-    //   // Check if dropped on trash zone
-    //   const trashZone = document.getElementById("trash-zone");
-    //   if (trashZone) {
-    //     const trashRect = trashZone.getBoundingClientRect();
-
-    //     // Check if the rectangle overlaps with trash zone (with some tolerance)
-    //     const tolerance = 50;
-    //     if (
-    //       screenX + 50 >= trashRect.left - tolerance && // rectangle right edge
-    //       screenX - 50 <= trashRect.right + tolerance && // rectangle left edge
-    //       screenY + 50 >= trashRect.top - tolerance && // rectangle bottom edge
-    //       screenY - 50 <= trashRect.bottom + tolerance // rectangle top edge
-    //     ) {
-    //       // Delete the rectangle
-    //       setRectangles((rects) => rects.filter((r) => r.id !== id));
-    //       setSelectedId(null);
-    //       if (onElementDeselect) onElementDeselect();
-    //       return;
-    //     }
-    //   }
-
-    //   // Normal drag behavior - update position
-    //   setRectangles((rects) =>
-    //     rects.map((r) => (r.id === id ? { ...r, x, y } : r))
-    //   );
-    // };
 
     const handleDragEnd = (e: any, id: string) => {
       const stage = e.target.getStage();
@@ -330,8 +296,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       const rotation = node.rotation();
 
       // Normalize dimensions
-      const newWidth = Math.max(5, node.width() * scaleX); // Minimum width of 5
-      const newHeight = Math.max(5, node.height() * scaleY); // Minimum height of 5
+      const newWidth = Math.max(
+        KONVA_THRESHOLDS.MIN_RECT_HEIGHT,
+        node.width() * scaleX
+      ); // Minimum width of 10
+      const newHeight = Math.max(
+        KONVA_THRESHOLDS.MIN_RECT_HEIGHT,
+        node.height() * scaleY
+      ); // Minimum height of 10
 
       // Reset Konva node transformations
       node.scaleX(1);

@@ -350,6 +350,22 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       });
     };
 
+    const handleDeselection = () => {
+      if (selectedId) {
+        setSelectedId(null);
+
+        // Clear transformer selection
+        if (trRef.current) {
+          trRef.current.nodes([]);
+          trRef.current.getLayer().batchDraw();
+        }
+
+        if (onElementDeselect) {
+          onElementDeselect();
+        }
+      }
+    };
+
     // Render textarea overlay for editing/adding text
     const renderTextarea = () => {
       if (!editingText) return null;
@@ -453,10 +469,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
           onClick={(e) => {
             const clickedOnEmpty = e.target === e.target.getStage();
             if (clickedOnEmpty) {
-              setSelectedId(null);
-              if (onElementDeselect) {
-                onElementDeselect();
-              }
+              handleDeselection();
             }
           }}
           onTap={(e) => {
@@ -470,11 +483,7 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                 // Double tap on empty stage - create new text
                 handleStageDblClick(e);
               } else {
-                // Single tap - deselect
-                setSelectedId(null);
-                if (onElementDeselect) {
-                  onElementDeselect();
-                }
+                handleDeselection();
               }
               setLastTap(now);
             }
