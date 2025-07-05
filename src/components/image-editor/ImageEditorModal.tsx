@@ -5,6 +5,8 @@ import type { KonvaArrow } from "./ArrowKonva";
 import type { KonvaCircleShape } from "./KonvaCircle";
 import type { KonvaTextShape } from "./TextEditor";
 
+import { GrClear } from "react-icons/gr";
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 
 import dynamic from "next/dynamic";
@@ -1342,103 +1344,6 @@ export default function ImageEditorModal({
     };
   };
 
-  // const drawArrow = (
-  //   ctx: CanvasRenderingContext2D,
-  //   fromX: number,
-  //   fromY: number,
-  //   toX: number,
-  //   toY: number,
-  //   isDouble: boolean
-  // ) => {
-  //   const headlen = brushSize * 5; // length of arrow head relative to brush size
-  //   const angle = Math.atan2(toY - fromY, toX - fromX);
-
-  //   // Draw the main line
-  //   ctx.beginPath();
-  //   ctx.moveTo(fromX, fromY);
-  //   ctx.lineTo(toX, toY);
-  //   ctx.strokeStyle = currentColor;
-  //   ctx.lineWidth = brushSize;
-  //   ctx.stroke();
-
-  //   // Draw the arrow head at the end
-  //   ctx.beginPath();
-  //   ctx.moveTo(toX, toY);
-  //   ctx.lineTo(
-  //     toX - headlen * Math.cos(angle - Math.PI / 6),
-  //     toY - headlen * Math.sin(angle - Math.PI / 6)
-  //   );
-  //   ctx.moveTo(toX, toY);
-  //   ctx.lineTo(
-  //     toX - headlen * Math.cos(angle + Math.PI / 6),
-  //     toY - headlen * Math.sin(angle + Math.PI / 6)
-  //   );
-  //   ctx.stroke();
-
-  //   // Draw the arrow head at the start if double-headed
-  //   if (isDouble) {
-  //     ctx.beginPath();
-  //     ctx.moveTo(fromX, fromY);
-  //     ctx.lineTo(
-  //       fromX + headlen * Math.cos(angle - Math.PI / 6),
-  //       fromY + headlen * Math.sin(angle - Math.PI / 6)
-  //     );
-  //     ctx.moveTo(fromX, fromY);
-  //     ctx.lineTo(
-  //       fromX + headlen * Math.cos(angle + Math.PI / 6),
-  //       fromY + headlen * Math.sin(angle + Math.PI / 6)
-  //     );
-  //     ctx.stroke();
-  //   }
-  // };
-
-  // const configureStrokeStyle = (ctx: CanvasRenderingContext2D) => {
-  //   switch (strokeStyle) {
-  //     case "solid":
-  //       ctx.setLineDash([]);
-  //       ctx.lineWidth = brushSize;
-  //       break;
-  //     case "dashed":
-  //       ctx.setLineDash([brushSize * 3, brushSize * 2]);
-  //       ctx.lineWidth = brushSize;
-  //       break;
-  //     case "dotted":
-  //       ctx.setLineDash([brushSize, brushSize]);
-  //       ctx.lineWidth = brushSize;
-  //       break;
-  //   }
-  // };
-
-  // const drawShape = (
-  //   ctx: CanvasRenderingContext2D,
-  //   shape: "line" | "rectangle" | "circle",
-  //   start: { x: number; y: number },
-  //   end: { x: number; y: number }
-  // ) => {
-  //   ctx.beginPath();
-  //   ctx.strokeStyle = currentColor;
-  //   configureStrokeStyle(ctx);
-
-  //   if (shape === "line") {
-  //     ctx.moveTo(start.x, start.y);
-  //     ctx.lineTo(end.x, end.y);
-  //     ctx.stroke();
-  //   } else if (shape === "rectangle") {
-  //     ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
-  //   } else if (shape === "circle") {
-  //     const radius = Math.sqrt(
-  //       Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)
-  //     );
-
-  //     ctx.beginPath();
-  //     ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-  //     ctx.stroke();
-  //   }
-
-  //   // Reset line dash to default
-  //   ctx.setLineDash([]);
-  // };
-
   const startDrawing = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
   ) => {
@@ -2264,23 +2169,23 @@ export default function ImageEditorModal({
 
             {activeTool &&
               ["text", "rectangle", "circle"].includes(activeTool) && (
-                <div className="space-y-4 mt-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="backgroundColor" className="text-sm">
-                      Background Color
-                    </Label>
-                    <input
-                      id="backgroundColor"
-                      type="color"
-                      value={backgroundColor || "transparent"}
-                      onChange={(e) => setBackgroundColor(e.target.value)}
-                      className="rounded-full w-6 h-6"
-                    />
-                  </div>
-
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Click on the canvas to add text
-                  </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Label htmlFor="backgroundColor" className="text-sm">
+                    Background Color
+                  </Label>
+                  <input
+                    id="backgroundColor"
+                    type="color"
+                    value={backgroundColor || "transparent"}
+                    onChange={(e) => setBackgroundColor(e.target.value)}
+                    className="rounded-full w-6 h-6"
+                  />
+                  <GrClear
+                    className="h-4 w-4"
+                    onClick={() => {
+                      setBackgroundColor("transparent");
+                    }}
+                  />
                 </div>
               )}
 
@@ -2382,6 +2287,7 @@ export default function ImageEditorModal({
                       : "crosshair",
                 }}
               />
+
               {mounted && (
                 <>
                   {activeTool === "rectangle" && (
@@ -2391,9 +2297,11 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={activeTool === "rectangle"}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
                       onMove={handleKonvaRectMove}
                       rectangles={rectangles}
@@ -2419,10 +2327,12 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={activeTool === "circle"}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaCircleAdd}
                       onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
@@ -2447,6 +2357,7 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={activeTool === "arrow"}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
@@ -2474,6 +2385,7 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={activeTool === "double-arrow"}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
@@ -2501,7 +2413,9 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={activeTool === "text"}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}
@@ -2529,9 +2443,11 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={false}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
                       onMove={handleKonvaRectMove}
                       rectangles={rectangles}
@@ -2557,10 +2473,12 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={false}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaCircleAdd}
                       onMove={handleKonvaCircleMove}
                       setCircles={setCircles} // Use history-aware setter
@@ -2585,6 +2503,7 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={false}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       onAdd={handleKonvaArrowAdd}
@@ -2612,6 +2531,7 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={false}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       brushSize={brushSize}
                       strokeStyle={strokeStyle}
                       arrows={doubleArrows}
@@ -2639,7 +2559,9 @@ export default function ImageEditorModal({
                       height={getCurrentCanvasDimensions().height}
                       active={false}
                       color={currentColor}
+                      setColor={setCurrentColor}
                       backgroundColor={backgroundColor}
+                      setBackgroundColor={setBackgroundColor}
                       fontSize={fontSize}
                       fontFamily={fontFamily}
                       onAdd={handleKonvaTextAdd}

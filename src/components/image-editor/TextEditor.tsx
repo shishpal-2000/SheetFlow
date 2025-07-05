@@ -28,7 +28,9 @@ interface TextEditorProps {
   height: number;
   active: boolean;
   color: string;
+  setColor: (color: string) => void;
   backgroundColor: string;
+  setBackgroundColor: (color: string) => void;
   fontSize: number;
   fontFamily: string;
   onAdd?: (text: KonvaTextShape) => void; // Callback when a new text is added
@@ -53,7 +55,9 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       height,
       active,
       color,
+      setColor,
       backgroundColor,
+      setBackgroundColor,
       fontSize,
       fontFamily,
       onAdd,
@@ -359,6 +363,17 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
       setLastDist(0);
     };
 
+    const handleTextClick = (id: string) => {
+      setSelectedId(id);
+      setColor(texts.find((t) => t.id === id)?.fill || "#000000");
+      setBackgroundColor(
+        texts.find((t) => t.id === id)?.backgroundColor || "transparent"
+      );
+      if (onElementSelect) {
+        onElementSelect(id, "text");
+      }
+    };
+
     // Double-click on empty canvas to add new text
     const handleStageDblClick = (e: any) => {
       if (!active) return;
@@ -580,16 +595,10 @@ const TextEditor = forwardRef<TextEditorHandle, TextEditorProps>(
                   scaleY={t.scaleY || 1}
                   draggable={t.draggable}
                   onClick={() => {
-                    setSelectedId(t.id);
-                    if (onElementSelect) {
-                      onElementSelect(t.id, "text");
-                    }
+                    handleTextClick(t.id);
                   }}
                   onTap={(e) => {
-                    setSelectedId(t.id);
-                    if (onElementSelect) {
-                      onElementSelect(t.id, "text");
-                    }
+                    handleTextClick(t.id);
                     handleDoubleTap(e, t.id);
                   }}
                   onDblClick={(e) => handleDblClick(e, t.id)}

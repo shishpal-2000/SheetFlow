@@ -24,6 +24,7 @@ interface KonvaArrowProps {
   height: number;
   active: boolean;
   color: string;
+  setColor: (color: string) => void;
   brushSize: number;
   strokeStyle: StrokeStyle;
   onAdd?: (arrow: KonvaArrow) => void; // Callback when a new arrow is added
@@ -48,6 +49,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       height,
       active,
       color,
+      setColor,
       brushSize,
       strokeStyle,
       onAdd,
@@ -161,7 +163,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
           )
         );
       }
-    }, [color, selectedId]);
+    }, [color, selectedId, brushSize]);
 
     // Single click to start drawing
     const handleStageClick = (e: any) => {
@@ -344,7 +346,9 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
     };
 
     const handleArrowClick = (id: string) => {
+      console.log("Arrow clicked:", id);
       setSelectedId(id);
+      setColor(arrows.find((a) => a.id === id)?.stroke || "#000000");
       if (onElementSelect) {
         onElementSelect(id, "arrow");
       }
@@ -581,13 +585,11 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               draggable={arrow.draggable}
               onClick={(e) => {
                 e.cancelBubble = true;
-                setSelectedId(arrow.id); // Selects the arrow
-                if (onElementSelect) onElementSelect(arrow.id, "arrow");
+                handleArrowClick(arrow.id);
               }}
               onTap={(e) => {
                 e.cancelBubble = true;
-                setSelectedId(arrow.id); // Selects the arrow for touch
-                if (onElementSelect) onElementSelect(arrow.id, "arrow");
+                handleArrowClick(arrow.id);
               }}
               onDragMove={(e) => handleDragMove(e, arrow.id)}
               onDragEnd={(e) => handleDragEnd(e, arrow.id)}
@@ -615,6 +617,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               "top-right",
               "bottom-left",
               "bottom-right",
+              "middle-left",
+              "middle-right",
             ]}
             anchorSize={8}
             borderDash={[4, 4]}
