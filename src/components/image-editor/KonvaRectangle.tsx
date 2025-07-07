@@ -303,7 +303,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         return;
       }
 
-      // Normal drag behavior - update position
+      // Normal drag behavior - update position zgfdh cvhg
       const newRect = { ...previousRect, x, y };
       setRectangles((rects) => rects.map((r) => (r.id === id ? newRect : r)));
 
