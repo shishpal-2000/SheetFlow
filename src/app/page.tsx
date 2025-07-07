@@ -6,10 +6,16 @@ import IssueTable from "@/components/issue-tracker/IssueTable";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import ImageEditorModal from "@/components/image-editor/ImageEditorModal";
+import dynamic from "next/dynamic";
+const ImageEditorModal = dynamic(
+  () => import("../components/image-editor/ImageEditorModal"),
+  {
+    ssr: false,
+    loading: () => <div>Loading Text Editor...</div>,
+  }
+);
 import { v4 as uuidv4 } from "uuid";
 
-const NUM_COLS = 4; // S/N, Description, Images, Actions
 const SELECTABLE_COL_INDICES = [1, 2]; // Column indices for "Description" and "Images"
 const MIN_SELECTABLE_COL = SELECTABLE_COL_INDICES[0];
 const MAX_SELECTABLE_COL =
@@ -55,9 +61,9 @@ export default function IssueTrackerPage() {
         const parsedIssues: Omit<Issue, "images"> &
           { images: Omit<IssueImage, "file">[] }[] = JSON.parse(storedIssues);
         setIssues(
-          parsedIssues.map((issue) => ({
+          parsedIssues.map((issue: any) => ({
             ...issue,
-            images: issue.images.map((img) => ({
+            images: issue.images.map((img: any) => ({
               ...img,
               file: new File([], img.name || "image.png", {
                 type: img.url.match(/data:(image\/\w+);/)?.[1] || "image/png",
@@ -641,7 +647,7 @@ export default function IssueTrackerPage() {
   );
 
   useEffect(() => {
-    const handleDirectPaste = (event: ClipboardEvent) => {
+    const handleDirectPaste = (event: any) => {
       if (internalClipboard && (event.ctrlKey || event.metaKey)) {
         return;
       }

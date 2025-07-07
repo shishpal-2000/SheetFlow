@@ -1,4 +1,16 @@
 {
     "IDX.aI.enableInlineCompletion": true,
-    "IDX.aI.enableCodebaseIndexing": true
+    "IDX.aI.enableCodebaseIndexing": true,
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": false,
+        "yaml": true,
+        "typescriptreact": true
+    },
+    "github.copilot.advanced": {
+        "debug.overrideEngine": "copilot-codex"
+    },
+    "github.copilot.chat.localeOverride": "en"
 }

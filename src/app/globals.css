@@ -86,3 +86,52 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* input[type="color"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 9999px;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+} */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.toolbar {
+  overflow-x: scroll; /* Enables horizontal scrolling */
+  overflow-y: hidden;
+  white-space: nowrap; /* Prevents wrapping */
+  scrollbar-width: auto; /* Firefox */
+  -ms-overflow-style: auto; /* IE 10+ */
+}
+
+/* Chrome/Safari/Edge (WebKit Browsers) */
+.toolbar::-webkit-scrollbar {
+  height: 4px; /* Always reserve space for scrollbar */
+  background: #eee;
+}
+
+.toolbar::-webkit-scrollbar-thumb {
+  background-color: #999;
+  border-radius: 1px;
+}
+
+.konvajs-content {
+  touch-action: none;
+}
+
