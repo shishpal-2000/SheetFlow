@@ -19,8 +19,9 @@ export interface KonvaRectangle {
   height: number;
   stroke: string;
   strokeWidth: number;
+  strokeStyle?: StrokeStyle;
   draggable: boolean;
-  dash?: number[]; // Optional dash pattern for stroke
+  dash: number[];
   rotation: number;
   fill?: string; // Optional fill color for the rectangle
 }
@@ -32,7 +33,9 @@ interface KonvaRectangleProps {
   color: string;
   setColor: (color: string) => void;
   brushSize: number;
+  setBrushSize: (size: number) => void;
   strokeStyle: StrokeStyle;
+  setStrokeStyle: (style: StrokeStyle) => void;
   backgroundColor?: string;
   setBackgroundColor: (color: string) => void;
   onAdd?: (rect: KonvaRectangle) => void;
@@ -59,7 +62,9 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
       color,
       setColor,
       brushSize,
+      setBrushSize,
       strokeStyle,
+      setStrokeStyle,
       backgroundColor,
       setBackgroundColor,
       onAdd,
@@ -142,6 +147,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
                   ...r,
                   stroke: color,
                   strokeWidth: brushSize,
+                  strokeStyle: strokeStyle,
                   dash: getDashPattern(strokeStyle, brushSize),
                   ...(backgroundColor !== undefined && {
                     fill: backgroundColor,
@@ -179,6 +185,7 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
         height: 0,
         stroke: color,
         strokeWidth: brushSize,
+        strokeStyle: strokeStyle,
         draggable: true,
         rotation: 0,
         dash: getDashPattern(strokeStyle, brushSize),
@@ -228,11 +235,14 @@ const KonvaRectangle = forwardRef<KonvaRectangleHandle, KonvaRectangleProps>(
     };
 
     const handleRectClick = (id: string) => {
+      const clickedRect = rectangles.find((r) => r.id === id);
+
       setSelectedId(id);
-      setColor(rectangles.find((r) => r.id === id)?.stroke || "#000000");
-      setBackgroundColor(
-        rectangles.find((r) => r.id === id)?.fill || "transparent"
-      );
+      setColor(clickedRect?.stroke || "#000000");
+      setBackgroundColor(clickedRect?.fill || "transparent");
+      setBrushSize(clickedRect?.strokeWidth || 3);
+      setStrokeStyle(clickedRect?.strokeStyle || "solid");
+
       if (onElementSelect) {
         onElementSelect(id, "rectangle");
       }

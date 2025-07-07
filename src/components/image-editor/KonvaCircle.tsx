@@ -18,8 +18,9 @@ export interface KonvaCircleShape {
   radius: number;
   stroke: string;
   strokeWidth: number;
+  strokeStyle: StrokeStyle;
   draggable: boolean;
-  dash?: number[]; // Optional dash pattern for stroke
+  dash: number[];
   fill?: string; // Optional fill color prop
 }
 
@@ -30,7 +31,9 @@ interface KonvaCircleProps {
   color: string;
   setColor: (color: string) => void;
   brushSize: number;
+  setBrushSize: (size: number) => void;
   strokeStyle: StrokeStyle;
+  setStrokeStyle: (style: StrokeStyle) => void;
   backgroundColor: string;
   setBackgroundColor: (color: string) => void;
   onAdd?: (circle: KonvaCircleShape) => void; // Callback when a new circle is added
@@ -57,7 +60,9 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
       color,
       setColor,
       brushSize,
+      setBrushSize,
       strokeStyle,
+      setStrokeStyle,
       backgroundColor,
       setBackgroundColor,
       onAdd,
@@ -136,6 +141,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
         radius: 1,
         stroke: color,
         strokeWidth: brushSize,
+        strokeStyle: strokeStyle,
         draggable: true,
         dash: getDashPattern(strokeStyle, brushSize),
         fill:
@@ -184,15 +190,19 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     };
 
     const handleCircleClick = (id: string) => {
+      const clickedCircle = circles.find((c) => c.id === id);
+
       setSelectedId(id);
-      setColor(circles.find((c) => c.id === id)?.stroke || "#000000");
-      setBackgroundColor(
-        circles.find((c) => c.id === id)?.fill || "transparent"
-      );
+      setColor(clickedCircle?.stroke || "#000000");
+      setBackgroundColor(clickedCircle?.fill || "transparent");
+      setBrushSize(clickedCircle?.strokeWidth || 3);
+      setStrokeStyle(clickedCircle?.strokeStyle || "solid");
+
       if (onElementSelect) {
         onElementSelect(id, "circle");
       }
     };
+
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
 
@@ -320,6 +330,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
                   ...c,
                   stroke: color,
                   strokeWidth: brushSize,
+                  strokeStyle: strokeStyle,
                   dash: getDashPattern(strokeStyle, brushSize),
                   ...(backgroundColor &&
                     backgroundColor !== "transparent" && {

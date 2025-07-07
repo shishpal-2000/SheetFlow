@@ -2172,7 +2172,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
@@ -2202,7 +2204,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
@@ -2322,7 +2326,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
@@ -2352,7 +2358,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
