@@ -16,6 +16,8 @@ export interface KonvaArrow {
   points: number[];
   stroke: string;
   strokeWidth: number;
+  strokeStyle: StrokeStyle;
+  dash: number[];
   draggable: boolean;
 }
 
@@ -26,7 +28,9 @@ interface KonvaArrowProps {
   color: string;
   setColor: (color: string) => void;
   brushSize: number;
+  setBrushSize: (size: number) => void;
   strokeStyle: StrokeStyle;
+  setStrokeStyle: (style: StrokeStyle) => void;
   onAdd?: (arrow: KonvaArrow) => void; // Callback when a new arrow is added
   onMove?: (id: string, newData: any, previousData: any) => void; // Add this for history tracking
   arrows: KonvaArrow[];
@@ -52,6 +56,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       setColor,
       brushSize,
       strokeStyle,
+      setStrokeStyle,
+      setBrushSize,
       onAdd,
       onMove, // Destructure onMove prop
       arrows,
@@ -158,12 +164,14 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
                   ...a,
                   stroke: color,
                   strokeWidth: brushSize,
+                  strokeStyle: strokeStyle,
+                  dash: getDashPattern(strokeStyle, brushSize),
                 }
               : a
           )
         );
       }
-    }, [color, selectedId, brushSize]);
+    }, [color, selectedId, brushSize, strokeStyle]);
 
     // Single click to start drawing
     const handleStageClick = (e: any) => {
@@ -196,6 +204,8 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
         points: [pos.x, pos.y, pos.x, pos.y],
         stroke: color,
         strokeWidth: brushSize,
+        strokeStyle,
+        dash: getDashPattern(strokeStyle, brushSize),
         draggable: true,
       });
       setSelectedId(id);
@@ -347,8 +357,15 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
 
     const handleArrowClick = (id: string) => {
       console.log("Arrow clicked:", id);
+      const clickedArrow = arrows.find((a) => a.id === id);
+
       setSelectedId(id);
-      setColor(arrows.find((a) => a.id === id)?.stroke || "#000000");
+      setColor(clickedArrow?.stroke || "#000000");
+      if (clickedArrow?.strokeStyle) {
+        setStrokeStyle(clickedArrow.strokeStyle);
+      }
+      setBrushSize(clickedArrow?.strokeWidth || 3);
+
       if (onElementSelect) {
         onElementSelect(id, "arrow");
       }
@@ -412,6 +429,10 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       const newArrow = {
         ...previousArrow!,
         points: constrainedPoints,
+        stroke: color,
+        strokeWidth: brushSize,
+        strokeStyle: strokeStyle,
+        dash: getDashPattern(strokeStyle, brushSize),
       };
 
       // Update the arrow state
@@ -512,6 +533,10 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
       const newArrow = {
         ...previousArrow!,
         points: newPoints,
+        stroke: color,
+        strokeWidth: brushSize,
+        strokeStyle: strokeStyle,
+        dash: getDashPattern(strokeStyle, brushSize),
       };
 
       setArrows((arrs) => arrs.map((a) => (a.id === id ? newArrow : a)));
@@ -578,7 +603,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               strokeWidth={arrow.strokeWidth}
               hitStrokeWidth={Math.max(60, arrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle, brushSize)}
+              dash={arrow.dash}
               pointerLength={15}
               pointerWidth={15}
               fill={arrow.stroke}
@@ -603,7 +628,7 @@ const ArrowKonva = forwardRef<KonvaArrowHandle, KonvaArrowProps>(
               strokeWidth={newArrow.strokeWidth}
               hitStrokeWidth={Math.max(90, newArrow.strokeWidth * 4)}
               perfectDrawEnabled={false}
-              dash={getDashPattern(strokeStyle, brushSize)}
+              dash={newArrow.dash}
               pointerLength={15}
               pointerWidth={15}
               fill={newArrow.stroke}

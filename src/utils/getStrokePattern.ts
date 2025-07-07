@@ -15,3 +15,15 @@ export const getDashPattern = (
       return [];
   }
 };
+
+export const getStrokeStyle = (dash: number[]): StrokeStyle => {
+  if (dash.length === 0) {
+    return "solid";
+  } else if (dash.length === 2) {
+    return "dashed";
+  } else if (dash.length === 1) {
+    return "dotted";
+  } else {
+    return "solid";
+  }
+};

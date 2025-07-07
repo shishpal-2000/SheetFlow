@@ -1920,13 +1920,6 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  // if (hasChanges && activeTool !== "curve") {
-                  //   setShowCurveConfirm(true);
-                  //   setShowCropConfirm(false);
-                  //   setShowCurveArrowConfirm(false);
-                  // } else {
-                  //   setActiveTool("curve");
-                  // }
                   setActiveTool("curve");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
@@ -1950,13 +1943,6 @@ export default function ImageEditorModal({
                   const hasChanges = imageData.some((pixel, index) => {
                     return index % 4 === 3 && pixel !== 0;
                   });
-                  // if (hasChanges && activeTool !== "curve-arrow") {
-                  //   setShowCurveArrowConfirm(true);
-                  //   setShowCropConfirm(false);
-                  //   setShowCurveConfirm(false);
-                  // } else {
-                  //   setActiveTool("curve-arrow");
-                  // }
                   setActiveTool("curve-arrow");
                 }}
                 className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
@@ -1965,119 +1951,6 @@ export default function ImageEditorModal({
                 Curve <br></br> Arrow
               </Button>
             </div>
-
-            {/* Confirmation dialog for crop */}
-            {/* {showCropConfirm && (
-              <div className="space-y-4 mt-2">
-                <p className="text-[12px] text-muted-foreground">
-                  These changes till now will be saved and they cannot be undone
-                  after cropping. You can make new changes after cropping the
-                  image.
-                </p>
-                <div className="flex flex-col gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      flattenLayers();
-                      setActiveTool("crop");
-                      setShowCropConfirm(false);
-                      toast({
-                        title: "Changes Saved",
-                        description:
-                          "Previous changes have been saved. You can continue making new changes after cropping.",
-                        duration: 3000,
-                      });
-                    }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Proceed
-                  </Button>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => setShowCropConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )} */}
-
-            {/* Confirmation dialog for curve */}
-            {/* {showCurveConfirm && (
-              <div className="space-y-4 mt-2">
-                <p className="text-[12px] text-muted-foreground">
-                  These changes till now will be saved and they cannot be undone
-                  after drawing a new curve. You can make new changes after
-                  drawing the curve.
-                </p>
-                <div className="flex flex-col gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      flattenLayers();
-                      setActiveTool("curve");
-                      setShowCurveConfirm(false);
-                      toast({
-                        title: "Changes Saved",
-                        description:
-                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
-                        duration: 3000,
-                      });
-                    }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Proceed
-                  </Button>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => setShowCurveConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )} */}
-
-            {/* {showCurveArrowConfirm && (
-              <div className="space-y-4 mt-2">
-                <p className="text-[12px] text-muted-foreground">
-                  These changes till now will be saved and they cannot be undone
-                  after drawing a new curve. You can make new changes after
-                  drawing the curve.
-                </p>
-                <div className="flex flex-col gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      flattenLayers();
-                      setActiveTool("curve-arrow");
-                      setShowCurveArrowConfirm(false);
-                      toast({
-                        title: "Changes Saved",
-                        description:
-                          "Previous changes have been saved. You can continue making new changes after drawing the curve.",
-                        duration: 3000,
-                      });
-                    }}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Proceed
-                  </Button>
-                  <Button
-                    variant="outline"
-                    type="button"
-                    onClick={() => setShowCurveArrowConfirm(false)}
-                    className="!flex !flex-col !px-2 !py-1 !gap-1 min-w-[45%] !h-max"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )} */}
 
             {/* Tool-specific controls */}
             {activeTool === "crop" && (
@@ -2299,7 +2172,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
@@ -2329,7 +2204,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
@@ -2359,7 +2236,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       onAdd={handleKonvaArrowAdd}
                       onMove={handleKonvaArrowMove}
                       arrows={arrows}
@@ -2387,7 +2266,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
                       onMove={handleKonvaDoubleArrowMove}
@@ -2445,7 +2326,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
                       onAdd={handleKonvaRectAdd}
@@ -2475,7 +2358,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       circles={circles}
                       backgroundColor={backgroundColor}
                       setBackgroundColor={setBackgroundColor}
@@ -2505,7 +2390,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       onAdd={handleKonvaArrowAdd}
                       onMove={handleKonvaArrowMove}
                       arrows={arrows}
@@ -2533,7 +2420,9 @@ export default function ImageEditorModal({
                       color={currentColor}
                       setColor={setCurrentColor}
                       brushSize={brushSize}
+                      setBrushSize={setBrushSize}
                       strokeStyle={strokeStyle}
+                      setStrokeStyle={setStrokeStyle}
                       arrows={doubleArrows}
                       onAdd={handleKonvaDoubleArrowAdd}
                       onMove={handleKonvaDoubleArrowMove}
