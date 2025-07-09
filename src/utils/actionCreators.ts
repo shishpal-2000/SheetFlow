@@ -125,7 +125,7 @@ export class ActionCreators {
     points: Point[],
     color: string,
     strokeWidth: number,
-    strokeStyle?: StrokeStyle
+    strokeStyle: StrokeStyle
   ): DrawingAction {
     return this.createDrawingAction(
       "DRAW_CURVE",
@@ -142,7 +142,7 @@ export class ActionCreators {
     points: Point[],
     color: string,
     strokeWidth: number,
-    strokeStyle?: StrokeStyle
+    strokeStyle: StrokeStyle
   ): DrawingAction {
     return this.createDrawingAction(
       "DRAW_CURVE_ARROW",

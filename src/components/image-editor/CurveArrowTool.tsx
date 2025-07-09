@@ -23,7 +23,7 @@ interface CurveToolProps {
     payload: any
   ) => void;
   addAction?: (action: any) => void;
-  replayManager?: React.MutableRefObject<CanvasReplayManager | null>;
+  replayManager?: React.RefObject<CanvasReplayManager | null>;
   historyState?: HistoryState;
 }
 
@@ -97,7 +97,9 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
     // When actively drawing, we need to redraw everything to show preview
     // When editing existing curves, we also need to clear and redraw
     const needsFullRedraw =
-      (drawing && currentCurve.length > 1) || selectedCurveIndex !== null;
+      (drawing && currentCurve.length > 1) ||
+      selectedCurveIndex !== null ||
+      mousePos !== null;
 
     if (needsFullRedraw) {
       // Clear the canvas
@@ -179,66 +181,72 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
     });
 
     // Draw the current curve being created
-    if (drawing && currentCurve.length > 1) {
-      const previewCurve = [...currentCurve, ...(mousePos ? [mousePos] : [])];
+    if (drawing && currentCurve.length > 0) {
+      const previewCurve = [...currentCurve];
+      if (mousePos && currentCurve.length > 0) {
+        previewCurve.push(mousePos);
+      }
 
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(previewCurve[0].x, previewCurve[0].y);
 
-      for (let i = 0; i < previewCurve.length - 1; i++) {
-        const p0 = previewCurve[i - 1] || previewCurve[i];
-        const p1 = previewCurve[i];
-        const p2 = previewCurve[i + 1];
-        const p3 = previewCurve[i + 2] || p2;
-
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-      }
-
-      ctx.strokeStyle = currentColor;
-      ctx.lineWidth = brushSize;
-
-      // Apply stroke style
-      switch (strokeStyle) {
-        case "dashed":
-          ctx.setLineDash([brushSize * 3, brushSize * 2]);
-          break;
-        case "dotted":
-          ctx.setLineDash([brushSize, brushSize]);
-          break;
-        default:
-          ctx.setLineDash([]);
-      }
-
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Draw arrows at both ends for preview
       if (previewCurve.length >= 2) {
-        drawArrow(
-          ctx,
-          previewCurve[Math.max(0, previewCurve.length - 2)],
-          previewCurve[previewCurve.length - 1],
-          brushSize
-        );
-        drawArrow(ctx, previewCurve[1], previewCurve[0], brushSize);
+        ctx.beginPath();
+        ctx.moveTo(previewCurve[0].x, previewCurve[0].y);
+
+        for (let i = 0; i < previewCurve.length - 1; i++) {
+          const p0 = previewCurve[i - 1] || previewCurve[i];
+          const p1 = previewCurve[i];
+          const p2 = previewCurve[i + 1];
+          const p3 = previewCurve[i + 2] || p2;
+
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize;
+
+        // Apply stroke style
+        switch (strokeStyle) {
+          case "dashed":
+            ctx.setLineDash([brushSize * 3, brushSize * 2]);
+            break;
+          case "dotted":
+            ctx.setLineDash([brushSize, brushSize]);
+            break;
+          default:
+            ctx.setLineDash([]);
+        }
+
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw arrows at both ends for preview
+        if (previewCurve.length >= 2) {
+          drawArrow(
+            ctx,
+            previewCurve[Math.max(0, previewCurve.length - 2)],
+            previewCurve[previewCurve.length - 1],
+            brushSize
+          );
+          drawArrow(ctx, previewCurve[1], previewCurve[0], brushSize);
+        }
       }
 
       ctx.restore();
     }
 
     // Draw preview line to mouse position
-    if (drawing && currentCurve.length > 0 && mousePos) {
+    if (drawing && currentCurve.length > 1 && mousePos) {
       const lastPoint = currentCurve[currentCurve.length - 1];
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(mousePos.x, mousePos.y);
-      ctx.strokeStyle = "#070707"; // Preview line color
+      ctx.strokeStyle = currentColor || "#070707"; // Preview line color
       ctx.setLineDash([brushSize, brushSize]);
       ctx.lineWidth = brushSize;
       ctx.stroke();
