@@ -1999,6 +1999,7 @@ export default function ImageEditorModal({
                 "arrow",
                 "double-arrow",
                 "curve",
+                "curve-arrow",
               ].includes(activeTool) && (
                 <div className="mt-4">
                   <Label

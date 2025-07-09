@@ -23,7 +23,7 @@ interface CurveToolProps {
     payload: any
   ) => void;
   addAction?: (action: any) => void;
-  replayManager?: React.MutableRefObject<CanvasReplayManager | null>;
+  replayManager?: React.RefObject<CanvasReplayManager | null>;
   historyState?: HistoryState;
 }
 
@@ -78,7 +78,9 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     // When actively drawing, we need to redraw everything to show preview
     // When editing existing curves, we also need to clear and redraw
     const needsFullRedraw =
-      (drawing && currentCurve.length > 1) || selectedCurveIndex !== null;
+      (drawing && currentCurve.length > 1) ||
+      selectedCurveIndex !== null ||
+      mousePos !== null;
 
     if (needsFullRedraw) {
       // Clear the canvas
@@ -149,45 +151,51 @@ export const CurveTool: React.FC<CurveToolProps> = ({
     });
 
     // Draw the current curve being created
-    if (drawing && currentCurve.length > 1) {
-      const previewCurve = [...currentCurve, ...(mousePos ? [mousePos] : [])];
+    if (drawing && currentCurve.length > 0) {
+      const previewCurve = [...currentCurve];
+      if (mousePos && currentCurve.length >= 1) {
+        previewCurve.push(mousePos);
+      }
 
       ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(previewCurve[0].x, previewCurve[0].y);
 
-      for (let i = 0; i < previewCurve.length - 1; i++) {
-        const p0 = previewCurve[i - 1] || previewCurve[i];
-        const p1 = previewCurve[i];
-        const p2 = previewCurve[i + 1];
-        const p3 = previewCurve[i + 2] || p2;
+      if (previewCurve.length >= 2) {
+        ctx.beginPath();
+        ctx.moveTo(previewCurve[0].x, previewCurve[0].y);
 
-        const cp1x = p1.x + (p2.x - p0.x) / 6;
-        const cp1y = p1.y + (p2.y - p0.y) / 6;
-        const cp2x = p2.x - (p3.x - p1.x) / 6;
-        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        for (let i = 0; i < previewCurve.length - 1; i++) {
+          const p0 = previewCurve[i - 1] || previewCurve[i];
+          const p1 = previewCurve[i];
+          const p2 = previewCurve[i + 1];
+          const p3 = previewCurve[i + 2] || p2;
 
-        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+          const cp1x = p1.x + (p2.x - p0.x) / 6;
+          const cp1y = p1.y + (p2.y - p0.y) / 6;
+          const cp2x = p2.x - (p3.x - p1.x) / 6;
+          const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = brushSize;
+
+        // Apply stroke style
+        switch (strokeStyle) {
+          case "dashed":
+            ctx.setLineDash([brushSize * 3, brushSize * 2]);
+            break;
+          case "dotted":
+            ctx.setLineDash([brushSize, brushSize]);
+            break;
+          default:
+            ctx.setLineDash([]);
+        }
+
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
       }
-
-      ctx.strokeStyle = currentColor;
-      ctx.lineWidth = brushSize;
-
-      // Apply stroke style
-      switch (strokeStyle) {
-        case "dashed":
-          ctx.setLineDash([brushSize * 3, brushSize * 2]);
-          break;
-        case "dotted":
-          ctx.setLineDash([brushSize, brushSize]);
-          break;
-        default:
-          ctx.setLineDash([]);
-      }
-
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
     }
 
     // Draw preview line to mouse position
@@ -196,7 +204,7 @@ export const CurveTool: React.FC<CurveToolProps> = ({
       ctx.beginPath();
       ctx.moveTo(lastPoint.x, lastPoint.y);
       ctx.lineTo(mousePos.x, mousePos.y);
-      ctx.strokeStyle = "#070707"; // Preview line color
+      ctx.strokeStyle = currentColor || "#070707"; // Preview line color
       ctx.setLineDash([brushSize, brushSize]);
       ctx.lineWidth = brushSize;
       ctx.stroke();

@@ -230,7 +230,26 @@ export class CanvasReplayManager {
       ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
     }
 
+    const { strokeStyle, strokeWidth } = action.payload;
+
+    if(strokeStyle) {
+      switch (strokeStyle) {
+        case "dashed":
+          ctx.setLineDash([strokeWidth * 3, strokeWidth * 2]);
+          break;
+        case "dotted":
+          ctx.setLineDash([strokeWidth, strokeWidth]);
+          break;
+        default:
+          ctx.setLineDash([]);
+          break;
+      }
+    } else {
+      ctx.setLineDash([]);
+    }
+
     ctx.stroke();
+    ctx.setLineDash([]);
 
     // If this is a curve arrow, draw arrows at both ends
     if (action.type === "DRAW_CURVE_ARROW" && points.length >= 2) {
