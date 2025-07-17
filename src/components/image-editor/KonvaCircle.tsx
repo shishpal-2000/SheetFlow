@@ -206,36 +206,43 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
     const handleTransformEnd = (e: any, id: string) => {
       const node = e.target;
 
-      // Get the previous circle data before transforming
       const previousCircle = circles.find((c) => c.id === id);
+      if (!previousCircle) return;
 
       const scaleX = node.scaleX();
-
+      const scaleY = node.scaleY();
+      const uniformScale = Math.max(Math.abs(scaleX), Math.abs(scaleY));
       const newRadius = Math.max(
-        node.radius() * scaleX,
+        previousCircle.radius * uniformScale,
         KONVA_THRESHOLDS.MIN_CIRCLE_RADIUS
       );
 
-      node.scaleX(1);
-      // node.scaleY(1);
+      const newCenterX = previousCircle.x;
+      const newCenterY = previousCircle.y;
 
-      // Create the new circle data
+      // Update the node properties directly first
+      node.radius(newRadius);
+      node.x(newCenterX);
+      node.y(newCenterY);
+      node.scaleX(1);
+      node.scaleY(1);
+      node.rotation(0);
+
+      // Force immediate redraw
+      node.getLayer().batchDraw();
+
+      // Then update React state
       const newCircle = {
-        ...previousCircle!,
+        ...previousCircle,
         radius: newRadius,
-        x: node.x(),
-        y: node.y(),
+        x: newCenterX,
+        y: newCenterY,
       };
 
       setCircles((cs) => cs.map((c) => (c.id === id ? newCircle : c)));
 
-      // Call onMove prop for history tracking if radius or position changed
       if (onMove && previousCircle) {
-        const hasChanged =
-          previousCircle.radius !== newRadius ||
-          previousCircle.x !== node.x() ||
-          previousCircle.y !== node.y();
-
+        const hasChanged = previousCircle.radius !== newRadius;
         if (hasChanged) {
           onMove(id, newCircle, previousCircle);
         }
@@ -426,6 +433,7 @@ const KonvaCircle = forwardRef<KonvaCircleHandle, KonvaCircleProps>(
             anchorSize={8}
             borderDash={[4, 4]}
             keepRatio={true}
+            centeredScaling={true}
           />
         </Layer>
       </Stage>

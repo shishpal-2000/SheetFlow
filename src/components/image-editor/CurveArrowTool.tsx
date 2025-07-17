@@ -162,7 +162,7 @@ const CurveArrowTool: React.FC<CurveToolProps> = ({
       if (curve.length >= 2) {
         drawArrow(
           ctx,
-          curve[Math.max(0, curve.length - 2)],
+          curve[Math.max(0, curve.length - 1)],
           curve[curve.length - 1],
           brushSize
         );
