@@ -153,89 +153,89 @@ const KonvaDoubleArrow = forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown);
     }, [selectedId]);
 
-    const handleTouchMove = (e: any) => {
-      if (!active) return;
+    // const handleTouchMove = (e: any) => {
+    //   if (!active) return;
 
-      const touch1 = e.evt.touches[0];
-      const touch2 = e.evt.touches[1];
+    //   const touch1 = e.evt.touches[0];
+    //   const touch2 = e.evt.touches[1];
 
-      // If we're drawing a new arrow, handle that first
-      if (newArrow && !touch2) {
-        handleMouseMove(e);
-        return;
-      }
+    //   // If we're drawing a new arrow, handle that first
+    //   if (newArrow && !touch2) {
+    //     handleMouseMove(e);
+    //     return;
+    //   }
 
-      // Two-finger gestures for selected arrow
-      if (touch1 && touch2 && selectedId) {
-        e.evt.preventDefault();
+    //   // Two-finger gestures for selected arrow
+    //   if (touch1 && touch2 && selectedId) {
+    //     e.evt.preventDefault();
 
-        const dist = getDistance(
-          { x: touch1.clientX, y: touch1.clientY },
-          { x: touch2.clientX, y: touch2.clientY }
-        );
+    //     const dist = getDistance(
+    //       { x: touch1.clientX, y: touch1.clientY },
+    //       { x: touch2.clientX, y: touch2.clientY }
+    //     );
 
-        const angle = getAngle(
-          { x: touch1.clientX, y: touch1.clientY },
-          { x: touch2.clientX, y: touch2.clientY }
-        );
+    //     const angle = getAngle(
+    //       { x: touch1.clientX, y: touch1.clientY },
+    //       { x: touch2.clientX, y: touch2.clientY }
+    //     );
 
-        const center = getCenter(
-          { x: touch1.clientX, y: touch1.clientY },
-          { x: touch2.clientX, y: touch2.clientY }
-        );
+    //     const center = getCenter(
+    //       { x: touch1.clientX, y: touch1.clientY },
+    //       { x: touch2.clientX, y: touch2.clientY }
+    //     );
 
-        // Get stage position for proper coordinate conversion
-        const stage = stageRef.current;
-        const stageBox = stage.container().getBoundingClientRect();
-        const stageCenter = {
-          x: center.x - stageBox.left,
-          y: center.y - stageBox.top,
-        };
+    //     // Get stage position for proper coordinate conversion
+    //     const stage = stageRef.current;
+    //     const stageBox = stage.container().getBoundingClientRect();
+    //     const stageCenter = {
+    //       x: center.x - stageBox.left,
+    //       y: center.y - stageBox.top,
+    //     };
 
-        if (lastDist > 0 && lastRotation !== null) {
-          const scale = dist / lastDist;
-          const rotationDelta = angle - lastRotation;
+    //     if (lastDist > 0 && lastRotation !== null) {
+    //       const scale = dist / lastDist;
+    //       const rotationDelta = angle - lastRotation;
 
-          setArrows((arrs) =>
-            arrs.map((a) => {
-              if (a.id === selectedId) {
-                const [x1, y1, x2, y2] = a.points;
-                const arrowCenter = {
-                  x: (x1 + x2) / 2,
-                  y: (y1 + y2) / 2,
-                };
+    //       setArrows((arrs) =>
+    //         arrs.map((a) => {
+    //           if (a.id === selectedId) {
+    //             const [x1, y1, x2, y2] = a.points;
+    //             const arrowCenter = {
+    //               x: (x1 + x2) / 2,
+    //               y: (y1 + y2) / 2,
+    //             };
 
-                // Calculate new points with scaling
-                const length = Math.sqrt(
-                  Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
-                );
-                const currentAngle = Math.atan2(y2 - y1, x2 - x1);
-                const newLength = length * scale;
-                const newAngle = currentAngle + rotationDelta;
+    //             // Calculate new points with scaling
+    //             const length = Math.sqrt(
+    //               Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)
+    //             );
+    //             const currentAngle = Math.atan2(y2 - y1, x2 - x1);
+    //             const newLength = length * scale;
+    //             const newAngle = currentAngle + rotationDelta;
 
-                const newX1 =
-                  arrowCenter.x - (newLength / 2) * Math.cos(newAngle);
-                const newY1 =
-                  arrowCenter.y - (newLength / 2) * Math.sin(newAngle);
-                const newX2 =
-                  arrowCenter.x + (newLength / 2) * Math.cos(newAngle);
-                const newY2 =
-                  arrowCenter.y + (newLength / 2) * Math.sin(newAngle);
+    //             const newX1 =
+    //               arrowCenter.x - (newLength / 2) * Math.cos(newAngle);
+    //             const newY1 =
+    //               arrowCenter.y - (newLength / 2) * Math.sin(newAngle);
+    //             const newX2 =
+    //               arrowCenter.x + (newLength / 2) * Math.cos(newAngle);
+    //             const newY2 =
+    //               arrowCenter.y + (newLength / 2) * Math.sin(newAngle);
 
-                return {
-                  ...a,
-                  points: [newX1, newY1, newX2, newY2],
-                };
-              }
-              return a;
-            })
-          );
-        }
+    //             return {
+    //               ...a,
+    //               points: [newX1, newY1, newX2, newY2],
+    //             };
+    //           }
+    //           return a;
+    //         })
+    //       );
+    //     }
 
-        setLastDist(dist);
-        setLastRotation(angle);
-      }
-    };
+    //     setLastDist(dist);
+    //     setLastRotation(angle);
+    //   }
+    // };
 
     const handleTouchEnd = (e: any) => {
       // Reset gesture tracking
@@ -578,7 +578,7 @@ const KonvaDoubleArrow = forwardRef<
         onMouseUp={handleMouseUp}
         // Touch events (Mobile)
         onTouchStart={handleStageClick}
-        onTouchMove={handleTouchMove}
+        // onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={(e) => {
           const clickedOnEmpty = e.target === e.target.getStage();

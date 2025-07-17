@@ -39,8 +39,16 @@ To get started, take a look at src/app/page.tsx.
 
 **Testing Bugs**
 
-- [ ] Text not editing in mobile view.
-- [ ] icons for curve and curve arrow are same.
-- [ ] After applying crop, the image is not editatble in actual mobile devices.
-- [ ] cancel button should contain a confirmation dialog to discard changes.
-- [ ] The stroke style drpdown appears on top sometimes in actual mobile device.
+- [x] Text not editing in mobile view.
+- [x] icons for curve and curve arrow are same.
+- [x] After applying crop, the image is not editatble in actual mobile devices.
+- [x] cancel button should contain a confirmation dialog to discard changes.
+- [x] The stroke style drpdown appears on top sometimes in actual mobile device.
+
+**Future Improvements**
+
+- [ ] how to finalize the curve tools in mobile devices.
+- [ ] Camera icon along side to "upload image" button to click photo in mobile devices.
+- [ ] Directly share the image to whatsapp.
+- [x] Maintain the shape of the circle during transform.
+- [X] add drag and drop to the image editor.

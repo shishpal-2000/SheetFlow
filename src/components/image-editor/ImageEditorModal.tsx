@@ -596,33 +596,31 @@ export default function ImageEditorModal({
         ctx.beginPath();
         ctx.moveTo(drawX1, drawY1);
         ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle + Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle + Math.PI / 7)
+          drawX1 + headlen * Math.cos(angle - Math.PI / 6),
+          drawY1 + headlen * Math.sin(angle - Math.PI / 6)
         );
         ctx.lineTo(
-          drawX1 + headlen * Math.cos(angle - Math.PI / 7),
-          drawY1 + headlen * Math.sin(angle - Math.PI / 7)
+          drawX1 + headlen * Math.cos(angle + Math.PI / 6),
+          drawY1 + headlen * Math.sin(angle + Math.PI / 6)
         );
-        ctx.lineTo(drawX1, drawY1);
-        ctx.stroke();
-        ctx.fillStyle = a.stroke;
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
-        // Second arrowhead
+        // Second arrowhead (at end) - improved drawing
         ctx.beginPath();
         ctx.moveTo(drawX2, drawY2);
         ctx.lineTo(
-          drawX2 - headlen * Math.cos(angle - Math.PI / 7),
-          drawY2 - headlen * Math.sin(angle - Math.PI / 7)
+          drawX2 + headlen * Math.cos(angle - Math.PI + Math.PI / 6),
+          drawY2 + headlen * Math.sin(angle - Math.PI + Math.PI / 6)
         );
         ctx.lineTo(
-          drawX2 - headlen * Math.cos(angle + Math.PI / 7),
-          drawY2 - headlen * Math.sin(angle + Math.PI / 7)
+          drawX2 + headlen * Math.cos(angle - Math.PI - Math.PI / 6),
+          drawY2 + headlen * Math.sin(angle - Math.PI - Math.PI / 6)
         );
-        ctx.lineTo(drawX2, drawY2);
-        ctx.stroke();
-        ctx.fillStyle = a.stroke;
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
 
         ctx.restore();
       });
