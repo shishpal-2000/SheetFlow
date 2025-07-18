@@ -44,11 +44,11 @@ To get started, take a look at src/app/page.tsx.
 - [x] After applying crop, the image is not editatble in actual mobile devices.
 - [x] cancel button should contain a confirmation dialog to discard changes.
 - [x] The stroke style drpdown appears on top sometimes in actual mobile device.
+- [X] Camera icon along side to "upload image" button to click photo in mobile devices.
+- [x] Maintain the shape of the circle during transform.
 
 **Future Improvements**
 
 - [ ] how to finalize the curve tools in mobile devices.
-- [ ] Camera icon along side to "upload image" button to click photo in mobile devices.
 - [ ] Directly share the image to whatsapp.
-- [x] Maintain the shape of the circle during transform.
 - [X] add drag and drop to the image editor.
