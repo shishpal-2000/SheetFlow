@@ -57,7 +57,7 @@ export interface BaseCanvasAction extends BaseAction {
   target: "base";
   type: "APPLY_FILTER" | "CROP_IMAGE" | "FLATTEN_LAYERS" | "LOAD_IMAGE";
   payload: {
-    filterType?: "blackAndWhite";
+    filterType?: "blackAndWhite" | "pencilSketch";
     cropArea?: {
       x: number;
       y: number;

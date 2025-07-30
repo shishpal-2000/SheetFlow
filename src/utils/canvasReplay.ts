@@ -6,6 +6,7 @@ import {
   Point,
 } from "@/types/history";
 import { getDashPattern } from "./getStrokePattern";
+import { usePencilSketch } from "@/components/image-editor/PencilSketch";
 
 export class CanvasReplayManager {
   public drawingCanvasRef: React.RefObject<HTMLCanvasElement>;
@@ -123,6 +124,14 @@ export class CanvasReplayManager {
             // Fallback to applying filter directly
             this.applyBlackAndWhiteFilter(ctx);
           }
+        } else if (action.payload.filterType === "pencilSketch") {
+          // For redo, apply the new processed image data
+          if (action.payload.newImageData) {
+            ctx.putImageData(action.payload.newImageData, 0, 0);
+          } else {
+            // Fallback to applying filter directly
+            this.applyPencilSketchFilter(ctx);
+          }
         }
         break;
       case "CROP_IMAGE":
@@ -232,7 +241,7 @@ export class CanvasReplayManager {
 
     const { strokeStyle, strokeWidth } = action.payload;
 
-    if(strokeStyle) {
+    if (strokeStyle) {
       switch (strokeStyle) {
         case "dashed":
           ctx.setLineDash([strokeWidth * 3, strokeWidth * 2]);
@@ -356,6 +365,61 @@ export class CanvasReplayManager {
       data[i + 1] = gray; // Green
       data[i + 2] = gray; // Blue
       // data[i + 3] is alpha, leave unchanged
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+  }
+
+  private applyPencilSketchFilter(ctx: CanvasRenderingContext2D): void {
+    const { isOpenCVLoaded, applyPencilSketch } = usePencilSketch();
+
+    try {
+      if (!isOpenCVLoaded) {
+        console.warn("OpenCV not loaded, using fallback");
+        this.applyPencilSketchFallback(ctx);
+        return;
+      }
+
+      const success = applyPencilSketch(ctx.canvas, {
+        kernelSize: 21,
+        intensity: 256,
+      });
+
+      if (!success) {
+        console.warn("Pencil sketch filter failed, using fallback");
+        this.applyPencilSketchFallback(ctx);
+      }
+    } catch (error) {
+      console.warn("Error applying pencil sketch:", error);
+      this.applyPencilSketchFallback(ctx);
+    }
+  }
+
+  private applyPencilSketchFallback(ctx: CanvasRenderingContext2D): void {
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      ctx.canvas.width,
+      ctx.canvas.height
+    );
+    const data = imageData.data;
+
+    // Simple pencil sketch approximation
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      // Convert to grayscale
+      const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+
+      // Apply a simple edge enhancement effect
+      const enhanced = Math.min(255, gray * 1.2);
+
+      data[i] = enhanced; // R
+      data[i + 1] = enhanced; // G
+      data[i + 2] = enhanced; // B
+      // Keep alpha unchanged
     }
 
     ctx.putImageData(imageData, 0, 0);

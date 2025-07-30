@@ -52,3 +52,4 @@ To get started, take a look at src/app/page.tsx.
 - [ ] how to finalize the curve tools in mobile devices.
 - [ ] Directly share the image to whatsapp.
 - [X] add drag and drop to the image editor.
+- [ ] Add a sketch filter to the image editor.
