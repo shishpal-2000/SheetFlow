@@ -282,8 +282,8 @@ export class CanvasReplayManager {
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
 
     // Calculate the actual end point considering the brush size
-    const endX = to.x - Math.cos(angle) * (size / 2);
-    const endY = to.y - Math.sin(angle) * (size / 2);
+    const endX = to.x;
+    const endY = to.y;
 
     ctx.save();
     ctx.lineCap = "round";

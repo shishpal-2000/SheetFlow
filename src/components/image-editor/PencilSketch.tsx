@@ -7,6 +7,8 @@ declare var cv: any;
 interface PencilSketchOptions {
   kernelSize?: number; // For Gaussian blur (default: 81)
   intensity?: number; // For brightness adjustment (default: 256)
+  contrast?: number; // Post-process contrast (1.0–2.0)
+  brightness?: number; // Post-process brightness (-50 to +50)
 }
 
 interface PencilSketchHookReturn {
@@ -88,7 +90,12 @@ export const usePencilSketch = (): PencilSketchHookReturn => {
       canvas: HTMLCanvasElement,
       options: PencilSketchOptions = {}
     ): Promise<boolean> => {
-      const { kernelSize = 21, intensity = 256 } = options;
+      const {
+        kernelSize = 21,
+        intensity = 256,
+        contrast = 0.8,
+        brightness = -40,
+      } = options;
 
       if (!isOpenCVLoaded || typeof cv === "undefined" || !cv.Mat) {
         console.error("OpenCV.js not loaded yet");
@@ -141,7 +148,7 @@ export const usePencilSketch = (): PencilSketchHookReturn => {
 
         // Ensure white background with dark lines
         const final = new cv.Mat();
-        result.convertTo(final, cv.CV_8UC1, 0.8, 10);
+        result.convertTo(final, cv.CV_8UC1, contrast, brightness);
 
         // Apply result back to canvas
         cv.imshow(canvas, final);

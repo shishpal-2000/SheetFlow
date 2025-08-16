@@ -954,6 +954,8 @@ export default function ImageEditorModal({
       const success = await applyPencilSketch(tempCanvas, {
         kernelSize: 21,
         intensity: 256,
+        contrast: 0.8,
+        brightness: 10,
       });
 
       if (!success) {
