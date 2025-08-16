@@ -220,7 +220,7 @@ export class ActionCreators {
   }
 
   static applyFilter(
-    filterType: "blackAndWhite",
+    filterType: "blackAndWhite" | "pencilSketch",
     previousImageData: ImageData,
     newImageData: ImageData
   ): BaseCanvasAction {

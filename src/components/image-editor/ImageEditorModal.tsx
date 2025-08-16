@@ -80,7 +80,7 @@ import { TbArrowCurveRight } from "react-icons/tb";
 import { useHistoryManager } from "@/hooks/useHistoryManager";
 import { DrawingAction } from "@/types/history";
 import { ActionCreators } from "@/utils/actionCreators";
-import { set } from "date-fns";
+import { usePencilSketch } from "./PencilSketch";
 
 interface ImageEditorModalProps {
   isOpen: boolean;
@@ -142,6 +142,8 @@ export default function ImageEditorModal({
   const [showCurveArrowConfirm, setShowCurveArrowConfirm] = useState(false);
   const { toast } = useToast();
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
+
+  const { isOpenCVLoaded, applyPencilSketch, loadOpenCV } = usePencilSketch();
 
   const {
     historyState,
@@ -221,6 +223,20 @@ export default function ImageEditorModal({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && !isOpenCVLoaded) {
+      console.log("Loading OpenCV for image editor...");
+      loadOpenCV().catch((error) => {
+        console.error("Failed to load OpenCV:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load image processing library",
+          variant: "destructive",
+        });
+      });
+    }
+  }, [isOpen, isOpenCVLoaded, loadOpenCV, toast]);
 
   const handleEraserCursorMove = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -900,6 +916,104 @@ export default function ImageEditorModal({
     []
   );
 
+  const handlePencilSketch = useCallback(async () => {
+    const baseCanvas = baseCanvasRef.current;
+    const ctx = baseCanvas?.getContext("2d");
+    if (!baseCanvas || !ctx || !imageDrawParams) return;
+
+    try {
+      // Store the current image data before applying filter (for undo)
+      const previousImageData = ctx.getImageData(
+        0,
+        0,
+        baseCanvas.width,
+        baseCanvas.height
+      );
+
+      const { offsetX, offsetY, drawWidth, drawHeight } = imageDrawParams;
+
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = drawWidth;
+      tempCanvas.height = drawHeight;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) return;
+
+      tempCtx.drawImage(
+        baseCanvas,
+        offsetX,
+        offsetY,
+        drawWidth,
+        drawHeight,
+        0,
+        0,
+        drawWidth,
+        drawHeight
+      );
+
+      // Apply pencil sketch using the separated logic
+      const success = await applyPencilSketch(tempCanvas, {
+        kernelSize: 21,
+        intensity: 256,
+        contrast: 0.8,
+        brightness: 10,
+      });
+
+      if (!success) {
+        toast({
+          title: "Processing Error",
+          description: "Failed to apply pencil sketch filter",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      ctx.clearRect(0, 0, baseCanvas.width, baseCanvas.height);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, baseCanvas.width, baseCanvas.height);
+
+      ctx.drawImage(
+        tempCanvas,
+        0,
+        0,
+        drawWidth,
+        drawHeight,
+        offsetX,
+        offsetY,
+        drawWidth,
+        drawHeight
+      );
+
+      // Get the new image data for history
+      const newImageData = ctx.getImageData(
+        0,
+        0,
+        baseCanvas.width,
+        baseCanvas.height
+      );
+
+      // Create action for history
+      const action = ActionCreators.applyFilter(
+        "pencilSketch",
+        previousImageData,
+        newImageData
+      );
+      addAction(action);
+
+      toast({
+        title: "Filter Applied",
+        description: "Pencil sketch filter has been applied successfully",
+      });
+    } catch (error) {
+      console.error("Error applying pencil sketch:", error);
+      toast({
+        title: "Processing Error",
+        description: "Failed to apply pencil sketch filter",
+        variant: "destructive",
+      });
+    }
+  }, [applyPencilSketch, addAction, toast]);
+
   const updateTrashZoneState = useCallback((isOver: boolean) => {
     setIsDraggedOverTrash(isOver);
   }, []);
@@ -1093,10 +1207,10 @@ export default function ImageEditorModal({
   };
 
   // Add black & white filter function
-  const applyBlackAndWhite = () => {
+  const applyBlackAndWhite = useCallback(() => {
     const baseCanvas = baseCanvasRef.current;
     const ctx = baseCanvas?.getContext("2d");
-    if (!baseCanvas || !ctx) return;
+    if (!baseCanvas || !ctx || !imageDrawParams) return;
 
     // Store the current image data before applying filter (for undo)
     const previousImageData = ctx.getImageData(
@@ -1106,39 +1220,53 @@ export default function ImageEditorModal({
       baseCanvas.height
     );
 
-    // Create a copy for applying the filter
-    const newImageData = ctx.createImageData(
-      baseCanvas.width,
-      baseCanvas.height
+    const { offsetX, offsetY, drawWidth, drawHeight } = imageDrawParams;
+
+    // ✅ Get only the image area data
+    const imageAreaData = ctx.getImageData(
+      offsetX,
+      offsetY,
+      drawWidth,
+      drawHeight
     );
-    newImageData.data.set(previousImageData.data);
 
     // Convert to grayscale
-    const data = newImageData.data;
+    const data = imageAreaData.data;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
       const gray = (r + g + b) / 3;
 
-      // Set all color channels to the gray value
       data[i] = gray; // Red
       data[i + 1] = gray; // Green
       data[i + 2] = gray; // Blue
-      // data[i + 3] is alpha, leave it unchanged
+      // data[i + 3] is alpha, leave unchanged
     }
 
-    // Apply the filter to the canvas
-    ctx.putImageData(newImageData, 0, 0);
+    // ✅ Put the processed data back only in the image area
+    ctx.putImageData(imageAreaData, offsetX, offsetY);
 
-    // Create action for history with before and after states
+    // Create action for history
+    const newImageData = ctx.getImageData(
+      0,
+      0,
+      baseCanvas.width,
+      baseCanvas.height
+    );
+
     const action = ActionCreators.applyFilter(
       "blackAndWhite",
       previousImageData,
       newImageData
     );
     addAction(action);
-  };
+
+    toast({
+      title: "Filter Applied",
+      description: "Black & White filter has been applied successfully",
+    });
+  }, [addAction, toast, imageDrawParams]);
 
   const hasDrawingCanvasContent = useCallback(() => {
     const drawingCanvas = drawingCanvasRef.current;
@@ -2603,6 +2731,31 @@ export default function ImageEditorModal({
           >
             <Filter className="h-4 w-4" />
             <span className="hidden sm:block">Apply Filter</span>
+          </Button>
+          <Button
+            variant={"outline"}
+            onClick={() => {
+              if (isOpenCVLoaded) {
+                handlePencilSketch();
+                // setShowFilterMenu(false);
+              } else {
+                toast({
+                  title: "Loading",
+                  description: "Image processing library is still loading...",
+                  variant: "default",
+                });
+              }
+            }}
+            disabled={!isOpenCVLoaded}
+            className={`text-[12px] w-max ${
+              !isOpenCVLoaded ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {!isOpenCVLoaded ? (
+              <span className="text-xs text-gray-400 ml-1">(Loading...)</span>
+            ) : (
+              "Pencil Sketch"
+            )}
           </Button>
           <Button
             variant={"secondary"}
